@@ -901,6 +901,9 @@
 			}
 		},
 
+		/**
+		 * Set up event handlers for widget move.
+		 */
 		_setupMoveUI: function() {
 			var self = this, $moveBtn, $reorderToggle, replaceDeleteWithMove;
 
@@ -909,18 +912,13 @@
 
 			$moveBtn.on( 'click', function ( e ) {
 				e.preventDefault();
-
 				$reorderToggle = $( this ).closest( '.ui-sortable' ).find( '.reorder-toggle' );
 				$reorderToggle.trigger( 'click' );
-
-				$activeMoveWidgetArea = $( this ).closest( '.move-widget-area .active' );
-				if( ! $activeMoveWidgetArea.length ) {
-					self.toggleWidgetMoveArea();
-				}
-				console.log( $activeMoveWidgetArea );
+				self.toggleWidgetMoveArea();
 			} );
 
-			replaceDeleteWithMove = function() {
+			// Replace the Delete link with Move.
+			replaceDeleteWithMove = function () {
 				$moveBtn.text( l10n.moveBtnLabel ); // wp_widget_control() outputs the link as "Close"
 				$moveBtn.attr( 'title', l10n.moveBtnTooltip );
 			};
