@@ -490,6 +490,7 @@
 			control._setupReorderUI();
 			control._setupHighlightEffects();
 			control._setupUpdateUI();
+			control._setupMoveUI();
 			control._setupRemoveUI();
 		},
 
@@ -900,15 +901,46 @@
 			}
 		},
 
+		_setupMoveUI: function() {
+			var self = this, $moveBtn, $reorderToggle, replaceDeleteWithMove;
+
+			// Configure move button
+			$moveBtn = this.container.find( 'a.widget-control-remove' );
+
+			$moveBtn.on( 'click', function ( e ) {
+				e.preventDefault();
+
+				$reorderToggle = $( this ).closest( '.ui-sortable' ).find( '.reorder-toggle' );
+				$reorderToggle.trigger( 'click' );
+
+				$activeMoveWidgetArea = $( this ).closest( '.move-widget-area .active' );
+				if( ! $activeMoveWidgetArea.length ) {
+					self.toggleWidgetMoveArea();
+				}
+				console.log( $activeMoveWidgetArea );
+			} );
+
+			replaceDeleteWithMove = function() {
+				$moveBtn.text( l10n.moveBtnLabel ); // wp_widget_control() outputs the link as "Close"
+				$moveBtn.attr( 'title', l10n.moveBtnTooltip );
+			};
+
+			if ( this.params.is_new ) {
+				api.bind( 'saved', replaceDeleteWithMove );
+			} else {
+				replaceDeleteWithMove();
+			}
+		},
+
 		/**
-		 * Set up event handlers for widget removal
+		 * Set up event handlers for widget removal.
 		 */
 		_setupRemoveUI: function() {
-			var self = this, $removeBtn, replaceDeleteWithRemove;
+			var self = this, $closeBtn, replaceCloseWithRemove;
 
 			// Configure remove button
-			$removeBtn = this.container.find( 'a.widget-control-remove' );
-			$removeBtn.on( 'click', function( e ) {
+			$closeBtn = this.container.find( 'a.widget-control-close' );
+			$closeBtn.on( 'click', function( e ) {
 				e.preventDefault();
 
 				// Find an adjacent element to add focus to when this widget goes away
@@ -942,15 +974,15 @@
 				} );
 			} );
 
-			replaceDeleteWithRemove = function() {
-				$removeBtn.text( l10n.removeBtnLabel ); // wp_widget_control() outputs the link as "Delete"
-				$removeBtn.attr( 'title', l10n.removeBtnTooltip );
+			replaceCloseWithRemove = function() {
+				$closeBtn.text( l10n.removeBtnLabel ); // wp_widget_control() outputs the link as "Close"
+				$closeBtn.attr( 'title', l10n.removeBtnTooltip );
 			};
 
 			if ( this.params.is_new ) {
-				api.bind( 'saved', replaceDeleteWithRemove );
+				api.bind( 'saved', replaceCloseWithRemove );
 			} else {
-				replaceDeleteWithRemove();
+				replaceCloseWithRemove();
 			}
 		},
 
