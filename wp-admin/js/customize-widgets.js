@@ -912,9 +912,11 @@
 
 			$moveBtn.on( 'click', function ( e ) {
 				e.preventDefault();
+				
 				$reorderToggle = $( this ).closest( '.ui-sortable' ).find( '.reorder-toggle' );
+				
 				$reorderToggle.trigger( 'click' );
-				self.toggleWidgetMoveArea();
+				self.openWidgetMoveArea();
 			} );
 
 			// Replace the Delete link with Move.
@@ -1513,6 +1515,19 @@
 
 			$moveWidgetArea.toggleClass( 'active', showOrHide );
 			self.toggleSaveForLater();
+		},
+
+		/**
+		 * Open widget move area if control is not active already.
+		 */
+		openWidgetMoveArea: function() {
+			var self = this, $moveWidgetArea;
+
+			$moveWidgetArea = this.container.find( '.move-widget-area' );
+
+			if( ! $moveWidgetArea.hasClass( 'active' ) ) {
+				self.toggleWidgetMoveArea();
+			}
 		},
 
 		/**
