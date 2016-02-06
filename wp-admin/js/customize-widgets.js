@@ -1512,6 +1512,23 @@
 			}
 
 			$moveWidgetArea.toggleClass( 'active', showOrHide );
+			self.toggleSaveForLater();
+		},
+
+		/**
+		 * Toggle visibility of the Save For Later/Inactive Widget Sidebar section.
+		 */
+		toggleSaveForLater: function() {
+			var self = this, $moveWidgetArea, $saveForLater;
+
+			$moveWidgetArea = this.container.find( '.move-widget-area' );
+			$saveForLater = this.container.find( "li[data-id='wp_inactive_widgets']");
+
+			if( $moveWidgetArea.hasClass( 'active' ) ) {
+				$saveForLater.show();
+			} else {
+				$saveForLater.hide();
+			}
 		},
 
 		/**

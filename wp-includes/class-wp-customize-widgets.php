@@ -660,8 +660,23 @@ final class WP_Customize_Widgets {
 			</div>'
 		);
 
+		$inactive_sidebar = array( 
+			'inactive-sidebar' => array(
+				'name' => __( 'Save For Later' ),
+				'id' => 'wp_inactive_widgets',
+				'description' => __( 'Save widgets to the Inactive Sidebar to use later.' ),
+				'class' => 'inactive-sidebar',
+				'before_widget' => '<aside id="%1$s" class="widget %2$s">',
+				'after_widget' => '</aside>',
+				'before_title' => '<h1 class="widget-title">',
+				'after_title' => '</h1>',
+			),
+		);
+
+		$all_sidebars = array_values( array_merge( $wp_registered_sidebars, $inactive_sidebar ) );
+
 		$settings = array(
-			'registeredSidebars'   => array_values( $wp_registered_sidebars ),
+			'registeredSidebars'   => $all_sidebars,
 			'registeredWidgets'    => $wp_registered_widgets,
 			'availableWidgets'     => $available_widgets, // @todo Merge this with registered_widgets
 			'l10n' => array(
