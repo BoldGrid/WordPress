@@ -740,9 +740,11 @@ final class WP_Customize_Widgets {
 			</div>
 			<div id="available-widgets-list">
 			<?php foreach ( $this->get_available_widgets() as $available_widget ): ?>
-				<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?>" tabindex="0">
-					<?php echo $available_widget['control_tpl']; ?>
-				</div>
+				<?php if( ! is_active_widget( false, $available_widget['id'], $available_widget['id_base'], false ) ): ?>
+					<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?> <?php echo esc_attr( $available_widget['status'] ) ?>-widget" tabindex="0">
+						<?php echo $available_widget['control_tpl']; ?>
+					</div>
+					<?php endif; ?>
 			<?php endforeach; ?>
 			</div><!-- #available-widgets-list -->
 		</div><!-- #available-widgets -->
@@ -855,7 +857,9 @@ final class WP_Customize_Widgets {
 
 		foreach ( $sort as $widget ) {
 			if ( in_array( $widget['callback'], $done, true ) ) { // We already showed this multi-widget
-				continue;
+				$widget['status'] = 'inactive';
+			} else {
+				$widget['status'] = 'active';
 			}
 
 			$sidebar = is_active_widget( $widget['callback'], $widget['id'], false, false );
@@ -885,7 +889,7 @@ final class WP_Customize_Widgets {
 				$args['_add'] = 'single';
 
 				if ( $sidebar && 'wp_inactive_widgets' !== $sidebar ) {
-					$is_disabled = true;
+					$is_disabled = false;
 				}
 				$id_base = $widget['id'];
 			}
@@ -909,7 +913,7 @@ final class WP_Customize_Widgets {
 
 			$available_widgets[] = $available_widget;
 		}
-
+		
 		return $available_widgets;
 	}
 
