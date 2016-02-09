@@ -925,11 +925,7 @@
 				$moveBtn.attr( 'title', l10n.moveBtnTooltip );
 			};
 
-			if ( this.params.is_new ) {
-				api.bind( 'saved', replaceDeleteWithMove );
-			} else {
-				replaceDeleteWithMove();
-			}
+			replaceDeleteWithMove();
 		},
 
 		/**
@@ -979,11 +975,7 @@
 				$closeBtn.attr( 'title', l10n.removeBtnTooltip );
 			};
 
-			if ( this.params.is_new ) {
-				api.bind( 'saved', replaceCloseWithRemove );
-			} else {
-				replaceCloseWithRemove();
-			}
+			replaceCloseWithRemove();
 		},
 
 		/**
