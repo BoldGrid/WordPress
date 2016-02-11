@@ -284,6 +284,77 @@ body.adding-widget #customize-preview {
 	-moz-osx-font-smoothing: grayscale;
 }
 
+
+/********* TEMP  **********/
+#available-widgets .widget-tpl {
+	padding-right: 35px;
+}
+
+#available-widgets .saved-widget {
+	margin-left: 48px;
+	border-left: 1px #e4e4e4 solid;
+	padding: 10px 20px 10px;
+	background-color: white;
+	display: none;
+}
+
+#available-widgets .saved-widget a {
+	cursor: pointer;
+}
+
+#available-widgets .saved-widget-controls {
+	visibility:  hidden;
+}
+
+#available-widgets .saved-widget:hover .saved-widget-controls {
+	visibility:  visible;
+}
+
+#available-widgets .saved-widget:last-of-type {
+	margin-bottom: 40px;
+}
+
+#available-widgets .delete-widget-permanently {
+	color: #a00;
+}
+#available-widgets .delete-widget-permanently:hover {
+	color: #f00;
+}
+
+#available-widgets .widget-tpl.expanded.expanded a.widget-action:after {
+    content: "\f142";
+}
+
+#available-widgets .has-inactive-widgets .widget-action {
+	display: block;
+	position: relative;
+	top: 30px;
+}
+#available-widgets .has-inactive-widgets .widget-title-action {
+	display: block;
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 30px;
+	background-color: #eee;
+}
+
+#available-widgets .has-inactive-widgets .widget-title-action:hover {
+	border-left: 1px #e4e4e4 solid;
+	background-color: white;	
+}
+
+#available-widgets .has-inactive-widgets .widget-title-action:hover .widget-action {
+	color: #555d66;
+}
+
+#available-widgets .has-inactive-widgets .widget-top a.widget-action:after {
+    margin: 0 auto;
+}
+/********* ENDTEMP  **********/
+
+
 /* smiley */
 #available-widgets [class*="easy"] .widget-title:before { content: "\f328"; top: -4px; }
 

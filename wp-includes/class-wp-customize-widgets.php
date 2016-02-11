@@ -740,11 +740,19 @@ final class WP_Customize_Widgets {
 			</div>
 			<div id="available-widgets-list">
 			<?php foreach ( $this->get_available_widgets() as $available_widget ): ?>
-				<?php if( ! is_active_widget( false, $available_widget['id'], $available_widget['id_base'], false ) ): ?>
-					<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?> <?php echo esc_attr( $available_widget['status'] ) ?>-widget" tabindex="0">
-						<?php echo $available_widget['control_tpl']; ?>
+				<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?>" tabindex="0">
+					<?php echo $available_widget['control_tpl']; ?>
+				</div>
+				<?php foreach ( $available_widget['saved_widgets'] as $saved_widget ): ?>
+					<div id="saved-widget-<?php echo esc_attr( $saved_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>" class="saved-widget">
+						<?php echo sprintf(  '%s: %s', $saved_widget['type'], $saved_widget['title']  );  ?>
+						<div class='saved-widget-controls'>
+							<a class='add-saved-widget' data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>">Add</a>
+							 | <a class='delete-widget-permanently'>Delete Permanently</a>
+						</div>
 					</div>
-					<?php endif; ?>
+				<?php endforeach; ?>
+				
 			<?php endforeach; ?>
 			</div><!-- #available-widgets-list -->
 		</div><!-- #available-widgets -->
@@ -854,17 +862,21 @@ final class WP_Customize_Widgets {
 		$sort = $wp_registered_widgets;
 		usort( $sort, array( $this, '_sort_name_callback' ) );
 		$done = array();
+		
+		$sorted_saved_widgets = $this->get_sorted_saved_widgets();
 
 		foreach ( $sort as $widget ) {
 			if ( in_array( $widget['callback'], $done, true ) ) { // We already showed this multi-widget
-				$widget['status'] = 'inactive';
-			} else {
-				$widget['status'] = 'active';
+				continue;
 			}
 
 			$sidebar = is_active_widget( $widget['callback'], $widget['id'], false, false );
-			$done[]  = $widget['callback'];
+			if ( in_array( $widget['callback'], $done, true ) ) {
+				continue;
+			}
 
+			$done[] = $widget['callback'];
+			
 			if ( ! isset( $widget['params'][0] ) ) {
 				$widget['params'][0] = array();
 			}
@@ -896,7 +908,7 @@ final class WP_Customize_Widgets {
 
 			$list_widget_controls_args = wp_list_widget_controls_dynamic_sidebar( array( 0 => $args, 1 => $widget['params'][0] ) );
 			$control_tpl = $this->get_widget_control( $list_widget_controls_args );
-
+			
 			// The properties here are mapped to the Backbone Widget model.
 			$available_widget = array_merge( $available_widget, array(
 				'temp_id'      => isset( $args['_temp_id'] ) ? $args['_temp_id'] : null,
@@ -909,12 +921,51 @@ final class WP_Customize_Widgets {
 				'width'        => $wp_registered_widget_controls[$widget['id']]['width'],
 				'height'       => $wp_registered_widget_controls[$widget['id']]['height'],
 				'is_wide'      => $this->is_wide_widget( $widget['id'] ),
+				'saved_widgets' => isset( $sorted_saved_widgets[ $id_base ] ) ? $sorted_saved_widgets[ $id_base ] : array(),
 			) );
 
 			$available_widgets[] = $available_widget;
 		}
 		
 		return $available_widgets;
+	}
+	
+	/**
+	 * Build up an index of all available widgets for use in Backbone models.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @global array $wp_registered_widgets
+	 * @global array $wp_registered_widget_controls
+	 * @staticvar array $available_widgets
+	 *
+	 * @see wp_list_widgets()
+	 *
+	 * @return array List of available widgets.
+	 */
+	public function get_sorted_saved_widgets( ) {
+		global $wp_registered_widget_controls;
+
+		$sidebars_widgets = wp_get_sidebars_widgets();
+		
+		$sorted_saved_widgets = array();
+		foreach ( $sidebars_widgets as $sidebars_widget ) {
+			foreach( $sidebars_widget as $widget ) {
+
+				if ( isset ( $wp_registered_widget_controls[ $widget ]['id_base'] ) ) {
+					$current_base_id = $wp_registered_widget_controls[ $widget ]['id_base'];
+					$sorted_saved_widgets[ $current_base_id ][] = array(
+						'id' => $widget,
+						'title' => "title",
+						'type' => $wp_registered_widget_controls[ $widget ]['name'],
+					);
+				}
+
+			}
+		}
+
+		return $sorted_saved_widgets;
 	}
 
 	/**

@@ -12,6 +12,8 @@
 
 	// Link settings
 	api.Widgets.data = _wpCustomizeWidgetsSettings || {};
+	console.log( api.Widgets.data );
+
 	l10n = api.Widgets.data.l10n;
 	delete api.Widgets.data.l10n;
 
@@ -153,6 +155,8 @@
 			'search #widgets-search': 'search',
 			'focus .widget-tpl' : 'focus',
 			'click .widget-tpl' : '_submit',
+			'click .add-saved-widget' : '_submit',
+			'click .widget-tpl .widget-title-action' : '_showInactive',
 			'keypress .widget-tpl' : '_submit',
 			'keydown' : 'keyboardAccessible'
 		},
@@ -187,6 +191,7 @@
 
 			// Close the panel if the URL in the preview changes
 			api.previewer.bind( 'url', this.close );
+			
 		},
 
 		// Performs a search and handles selected widget
@@ -215,7 +220,7 @@
 				}
 			}
 		},
-
+		
 		// Changes visibility of available widgets
 		updateList: function() {
 			this.collection.each( function( widget ) {
@@ -225,6 +230,25 @@
 					this.selected = null;
 				}
 			} );
+		},
+		
+		updateVisibleSavedWidgets : function () {
+			$( '.widget-tpl.has-inactive-widgets, .widget-tpl.expanded' )
+				.removeClass( 'has-inactive-widgets' )
+				.removeClass('expanded');
+			
+			$( '.saved-widget' )
+				.hide()
+				.removeClass( 'inactive-widget' );
+			
+			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
+				if ( widgetId ) {
+					var $savedWidget = $( '#saved-widget-' + widgetId );
+					$savedWidget.addClass( 'inactive-widget' );
+					$savedWidget.prevAll( '.widget-tpl' ).eq(0).addClass( 'has-inactive-widgets' );
+				}
+			} );
+			
 		},
 
 		// Highlights a widget
@@ -237,6 +261,17 @@
 		// Highlights a widget on focus
 		focus: function( event ) {
 			this.select( $( event.currentTarget ) );
+		},
+		
+		// Slides down a list of active widgets per widget type
+		_showInactive : function ( event ) {
+			event.stopPropagation();
+			var $currentTarget = $( event.currentTarget );
+			$currentTarget.closest( '.widget-tpl' )
+				.toggleClass( 'expanded' )
+				.nextUntil( '.widget-tpl', '.saved-widget.inactive-widget' )
+				.stop()
+				.slideToggle( 'fast' );
 		},
 
 		// Submit handler for keypress and click on widget
@@ -251,7 +286,7 @@
 
 		// Adds a selected widget to the sidebar
 		submit: function( widgetTpl ) {
-			var widgetId, widget, widgetFormControl;
+			var widgetId, widget, widgetFormControl, isSavedWidget, $selectedWidget;
 
 			if ( ! widgetTpl ) {
 				widgetTpl = this.selected;
@@ -263,13 +298,25 @@
 
 			this.select( widgetTpl );
 
-			widgetId = $( this.selected ).data( 'widget-id' );
+			$selectedWidget = $( this.selected );
+			widgetId = $selectedWidget.data( 'widget-id' );
+			isSavedWidget = $selectedWidget.data( 'is-saved-widget' );
+			
 			widget = this.collection.findWhere( { id: widgetId } );
-			if ( ! widget ) {
+			if ( ! widget && ! isSavedWidget ) {
 				return;
 			}
-
-			widgetFormControl = this.currentSidebarControl.addWidget( widget.get( 'id_base' ) );
+			
+			if ( ( isSavedWidget && !api.Widgets.data.registeredWidgets[ widgetId ] ) || $selectedWidget.hasClass( 'saved-widget' ) ) {
+				return;
+			}
+			
+			if ( isSavedWidget ) {
+				widgetFormControl = this.currentSidebarControl.addWidget( widgetId );
+			} else {
+				widgetFormControl = this.currentSidebarControl.addWidget( widget.get( 'id_base' ) );
+			}
+			
 			if ( widgetFormControl ) {
 				widgetFormControl.focus();
 			}
@@ -280,7 +327,9 @@
 		// Opens the panel
 		open: function( sidebarControl ) {
 			this.currentSidebarControl = sidebarControl;
-
+			
+			this.updateVisibleSavedWidgets();
+			
 			// Wide widget controls appear over the preview, and so they need to be collapsed when the panel opens
 			_( this.currentSidebarControl.getWidgetFormControls() ).each( function( control ) {
 				if ( control.params.is_wide ) {
@@ -432,6 +481,7 @@
 			});
 
 			api.Control.prototype.initialize.call( control, id, options );
+
 		},
 
 		/**
@@ -951,7 +1001,7 @@
 
 				self.container.slideUp( function() {
 					var sidebarsWidgetsControl = api.Widgets.getSidebarWidgetControlContainingWidget( self.params.widget_id ),
-						sidebarWidgetIds, i;
+						sidebarWidgetIds, i, inactiveWidgets;
 
 					if ( ! sidebarsWidgetsControl ) {
 						return;
@@ -962,10 +1012,15 @@
 					if ( -1 === i ) {
 						return;
 					}
-
+				
 					sidebarWidgetIds.splice( i, 1 );
 					sidebarsWidgetsControl.setting( sidebarWidgetIds );
-
+					
+					// Add widget to inactive widgets.
+					inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' )();
+					inactiveWidgets.push( self.params.widget_id );
+					api.value( 'sidebars_widgets[wp_inactive_widgets]' )( _( inactiveWidgets ).unique() );
+					
 					$adjacentFocusTarget.focus(); // keyboard accessibility
 				} );
 			} );
@@ -1265,6 +1320,7 @@
 			} );
 
 			jqxhr.always( function() {
+
 				self.container.removeClass( 'widget-form-loading' );
 
 				$inputs.each( function() {
@@ -2076,7 +2132,7 @@
 					i = _.indexOf( otherSidebarWidgets, widgetId );
 
 				if ( -1 !== i ) {
-					otherSidebarWidgets.splice( i );
+					otherSidebarWidgets.splice( i, 1 );
 					otherSetting( otherSidebarWidgets );
 				}
 			} );
