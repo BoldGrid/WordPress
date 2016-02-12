@@ -289,7 +289,7 @@
 			this.select( $( event.currentTarget ) );
 		},
 		
-		// show or hide the list of inactive widgets per widget id base
+		// Show or hide the list of inactive widgets per widget id base.
 		toggleInactive: function ( idBase ) {
 			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' );
 			var $inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
@@ -304,7 +304,7 @@
 			}
 		},
 		
-		// Slides down a list of active widgets per widget type
+		// Slides down a list of active widgets per widget type.
 		_toggleInactive : function ( event ) {
 			event.stopPropagation();	
 			event.preventDefault();
@@ -313,14 +313,30 @@
 			this.toggleInactive( $widgetTpl.data('id-base') );
 		},
 		
+		// Permanently delete a widget.
 		_delete : function ( event ) {
-			var $currentTarget = $( event.currentTarget ),
+			var self = this,
+				$currentTarget = $( event.currentTarget ),
 				inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' ),
-				widgetId = $currentTarget.closest('.saved-widget').data('widget-id'),
+				$savedWidgets = $currentTarget.closest('.saved-widget'),
+				widgetId = $savedWidgets.data('widget-id'),
+				idBase = $savedWidgets.data('id-base'),
 				oldValue = inactiveWidgets();
 			
 			oldValue.splice( oldValue.indexOf( widgetId ), 1 );
-			inactiveWidgets( oldValue )
+			inactiveWidgets( oldValue );
+			
+			$currentTarget.closest('.saved-widget').slideUp('fast' , function ()  {
+				$(this).remove();
+				
+				// Remove drop down if widgets no longer exist
+				var remainingWidgets = self.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
+				if ( !remainingWidgets.length ) {
+					self.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' )
+						.removeClass('has-inactive-widgets expanded');
+				}
+
+			});
 		},
 
 		// Submit handler for keypress and click on widget
