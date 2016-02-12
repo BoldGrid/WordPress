@@ -740,15 +740,15 @@ final class WP_Customize_Widgets {
 			</div>
 			<div id="available-widgets-list">
 			<?php foreach ( $this->get_available_widgets() as $available_widget ): ?>
-				<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?>" tabindex="0">
+				<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-id-base="<?php echo esc_attr( $available_widget['id_base'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?>" tabindex="0">
 					<?php echo $available_widget['control_tpl']; ?>
 				</div>
 				<?php foreach ( $available_widget['saved_widgets'] as $saved_widget ): ?>
-					<div id="saved-widget-<?php echo esc_attr( $saved_widget['id'] ) ?>" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>" class="saved-widget">
-						<?php echo sprintf(  '%s: %s', $saved_widget['type'], $saved_widget['title']  );  ?>
+					<div id="saved-widget-<?php echo esc_attr( $saved_widget['id'] ) ?>" data-id-base="<?php echo esc_attr( $available_widget['id_base'] ) ?>" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>" class=" widget-title saved-widget">
+						<h3><?php echo $saved_widget['type']; ?><span class="in-widget-title"></span></h3>
 						<div class='saved-widget-controls'>
-							<a class='add-saved-widget' data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>">Add</a>
-							 | <a class='delete-widget-permanently'>Delete Permanently</a>
+							<a class='add-saved-widget' data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>"
+							>Add</a>| <a class='delete-widget-permanently'>Delete Widget</a>
 						</div>
 					</div>
 				<?php endforeach; ?>
@@ -923,7 +923,6 @@ final class WP_Customize_Widgets {
 				'is_wide'      => $this->is_wide_widget( $widget['id'] ),
 				'saved_widgets' => isset( $sorted_saved_widgets[ $id_base ] ) ? $sorted_saved_widgets[ $id_base ] : array(),
 			) );
-
 			$available_widgets[] = $available_widget;
 		}
 		
@@ -957,7 +956,6 @@ final class WP_Customize_Widgets {
 					$current_base_id = $wp_registered_widget_controls[ $widget ]['id_base'];
 					$sorted_saved_widgets[ $current_base_id ][] = array(
 						'id' => $widget,
-						'title' => "title",
 						'type' => $wp_registered_widget_controls[ $widget ]['name'],
 					);
 				}

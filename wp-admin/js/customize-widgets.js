@@ -12,7 +12,6 @@
 
 	// Link settings
 	api.Widgets.data = _wpCustomizeWidgetsSettings || {};
-	console.log( api.Widgets.data );
 
 	l10n = api.Widgets.data.l10n;
 	delete api.Widgets.data.l10n;
@@ -219,6 +218,11 @@
 					this.select( firstVisible );
 				}
 			}
+			
+			// Collapse inactive widgets upon searching.
+			this.$el.find( '.saved-widget' ).hide();
+			this.$el.find( '.widget-tpl.expanded' ).removeClass( 'expanded' );
+			
 		},
 		
 		// Changes visibility of available widgets
@@ -232,20 +236,39 @@
 			} );
 		},
 		
+		// Show inactive widgets and hide active widgets.
 		updateVisibleSavedWidgets : function () {
-			$( '.widget-tpl.has-inactive-widgets, .widget-tpl.expanded' )
-				.removeClass( 'has-inactive-widgets' )
-				.removeClass('expanded');
+			var self = this;
 			
-			$( '.saved-widget' )
+			// Remove state classes.
+			this.$el.find( '.widget-tpl.has-inactive-widgets, .widget-tpl.expanded' )
+				.removeClass( 'has-inactive-widgets' )
+				.removeClass( 'expanded' );
+			
+			// Hide all inactive widgets
+			this.$el.find( '.saved-widget' )
 				.hide()
 				.removeClass( 'inactive-widget' );
 			
 			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
 				if ( widgetId ) {
-					var $savedWidget = $( '#saved-widget-' + widgetId );
+
+					var $savedWidget 	= self.$el.find( '#saved-widget-' + widgetId );
+					var base_id 		= $savedWidget.data( 'id-base' );
+					var parsedWidgetId 	= parseWidgetId( widgetId );
+					var widget_setting 	= api( 'widget_' + base_id + '[' + parsedWidgetId.number + ']' );
+					var title = (widget_setting) ? widget_setting().title : null;
 					$savedWidget.addClass( 'inactive-widget' );
-					$savedWidget.prevAll( '.widget-tpl' ).eq(0).addClass( 'has-inactive-widgets' );
+					
+					self.$el.find( '.widget-tpl[data-id-base="' + base_id + '"]' )
+						.addClass( 'has-inactive-widgets' );
+					
+					var $inWidgetTitle = $savedWidget.find( '.in-widget-title' );
+					if ( title ) {
+						$inWidgetTitle.text( ': ' + title );
+					} else {
+						$inWidgetTitle.text( '' );
+					}
 				}
 			} );
 			
@@ -266,10 +289,13 @@
 		// Slides down a list of active widgets per widget type
 		_showInactive : function ( event ) {
 			event.stopPropagation();
+			
 			var $currentTarget = $( event.currentTarget );
-			$currentTarget.closest( '.widget-tpl' )
-				.toggleClass( 'expanded' )
-				.nextUntil( '.widget-tpl', '.saved-widget.inactive-widget' )
+			var $widgetTpl = $currentTarget.closest( '.widget-tpl' );
+			var idBase = $widgetTpl.data('id-base');
+			
+			$widgetTpl.toggleClass( 'expanded' );
+			this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' )
 				.stop()
 				.slideToggle( 'fast' );
 		},
@@ -1152,7 +1178,7 @@
 		updateWidget: function( args ) {
 			var self = this, instanceOverride, completeCallback, $widgetRoot, $widgetContent,
 				updateNumber, params, data, $inputs, processing, jqxhr, isChanged;
-
+			
 			// The updateWidget logic requires that the form fields to be fully present.
 			self.embedWidgetContent();
 

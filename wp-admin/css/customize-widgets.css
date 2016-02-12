@@ -298,16 +298,21 @@ body.adding-widget #customize-preview {
 	display: none;
 }
 
+#available-widgets .saved-widget h3 {
+	font-size: 1em;
+	margin: 0;
+}
+
 #available-widgets .saved-widget a {
 	cursor: pointer;
 }
 
 #available-widgets .saved-widget-controls {
-	visibility:  hidden;
+	visibility: hidden;
 }
 
 #available-widgets .saved-widget:hover .saved-widget-controls {
-	visibility:  visible;
+	visibility: visible;
 }
 
 #available-widgets .saved-widget:last-of-type {
@@ -321,14 +326,17 @@ body.adding-widget #customize-preview {
 	color: #f00;
 }
 
-#available-widgets .widget-tpl.expanded.expanded a.widget-action:after {
+#available-widgets .widget-tpl.expanded a.widget-action:after {
     content: "\f142";
 }
+
 
 #available-widgets .has-inactive-widgets .widget-action {
 	display: block;
 	position: relative;
 	top: 30px;
+	width: 20px;
+	margin: 0 auto;
 }
 #available-widgets .has-inactive-widgets .widget-title-action {
 	display: block;
@@ -340,6 +348,11 @@ body.adding-widget #customize-preview {
 	background-color: #eee;
 }
 
+#available-widgets .saved-widget.widget-title:before {
+	display: none;
+}
+
+#available-widgets .widget-tpl.expanded .widget-title-action,
 #available-widgets .has-inactive-widgets .widget-title-action:hover {
 	border-left: 1px #e4e4e4 solid;
 	background-color: white;	
