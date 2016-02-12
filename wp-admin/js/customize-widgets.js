@@ -155,6 +155,7 @@
 			'focus .widget-tpl' : 'focus',
 			'click .widget-tpl' : '_submit',
 			'click .add-saved-widget' : '_submit',
+			'click .delete-widget-permanently' : '_delete',
 			'click .widget-tpl .widget-title-action' : '_showInactive',
 			'keypress .widget-tpl' : '_submit',
 			'keydown' : 'keyboardAccessible'
@@ -298,6 +299,16 @@
 			this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' )
 				.stop()
 				.slideToggle( 'fast' );
+		},
+		
+		_delete : function ( event ) {
+			var $currentTarget = $( event.currentTarget );
+			var inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' );
+			var widgetId = $currentTarget.closest('.saved-widget').data('widget-id');
+			var oldValue = inactiveWidgets();
+			oldValue.splice( oldValue.indexOf( widgetId ), 1 );
+			inactiveWidgets( oldValue )
+			api.trigger('change');
 		},
 
 		// Submit handler for keypress and click on widget
