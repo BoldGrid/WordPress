@@ -744,7 +744,7 @@ final class WP_Customize_Widgets {
 					<?php echo $available_widget['control_tpl']; ?>
 				</div>
 				<?php foreach ( $available_widget['saved_widgets'] as $saved_widget ): ?>
-					<div id="saved-widget-<?php echo esc_attr( $saved_widget['id'] ) ?>" data-id-base="<?php echo esc_attr( $available_widget['id_base'] ) ?>" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>" class=" widget-title saved-widget">
+					<div id="saved-widget-<?php echo esc_attr( $saved_widget['id'] ) ?>" data-id-base="<?php echo esc_attr( $available_widget['id_base'] ) ?>" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>" class=" widget-title saved-widget widget-tpl">
 						<h3><?php echo $saved_widget['type']; ?><span class="in-widget-title"></span></h3>
 						<div class='saved-widget-controls'>
 							<a class='add-saved-widget' data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>"

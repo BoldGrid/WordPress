@@ -262,6 +262,7 @@
 					$savedWidget.addClass( 'inactive-widget' );
 					
 					self.$el.find( '.widget-tpl[data-id-base="' + base_id + '"]' )
+						.not('.saved-widget')
 						.addClass( 'has-inactive-widgets' );
 					
 					var $inWidgetTitle = $savedWidget.find( '.in-widget-title' );
@@ -290,15 +291,19 @@
 		// Slides down a list of active widgets per widget type
 		_showInactive : function ( event ) {
 			event.stopPropagation();
-			
-			var $currentTarget = $( event.currentTarget );
-			var $widgetTpl = $currentTarget.closest( '.widget-tpl' );
+
+			var $widgetTpl = $( event.currentTarget ).closest( '.widget-tpl' );
 			var idBase = $widgetTpl.data('id-base');
+			var $inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
 			
 			$widgetTpl.toggleClass( 'expanded' );
-			this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' )
-				.stop()
-				.slideToggle( 'fast' );
+			$inactiveWidgets.stop().slideToggle( 'fast' );
+			
+			if ( $widgetTpl.hasClass('expanded') ) {
+				this.select( $inactiveWidgets.first() );
+			} else {
+				this.select( $widgetTpl );
+			}
 		},
 		
 		_delete : function ( event ) {
@@ -308,7 +313,6 @@
 			var oldValue = inactiveWidgets();
 			oldValue.splice( oldValue.indexOf( widgetId ), 1 );
 			inactiveWidgets( oldValue )
-			api.trigger('change');
 		},
 
 		// Submit handler for keypress and click on widget

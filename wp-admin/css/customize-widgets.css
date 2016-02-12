@@ -303,6 +303,10 @@ body.adding-widget #customize-preview {
 	margin: 0;
 }
 
+#available-widgets .saved-widget {
+	cursor: default;
+}
+
 #available-widgets .saved-widget a {
 	cursor: pointer;
 }
@@ -311,6 +315,7 @@ body.adding-widget #customize-preview {
 	visibility: hidden;
 }
 
+#available-widgets .saved-widget.selected .saved-widget-controls,
 #available-widgets .saved-widget:hover .saved-widget-controls {
 	visibility: visible;
 }
@@ -330,20 +335,21 @@ body.adding-widget #customize-preview {
     content: "\f142";
 }
 
-
 #available-widgets .has-inactive-widgets .widget-action {
 	display: block;
 	position: relative;
-	top: 30px;
+	top: 50%;
 	width: 20px;
 	margin: 0 auto;
+	transform: translateY(-50%);
 }
+
 #available-widgets .has-inactive-widgets .widget-title-action {
 	display: block;
 	position: absolute;
 	right: 0;
 	top: 0;
-	bottom: 0;
+	height:100%;
 	width: 30px;
 	background-color: #eee;
 }
