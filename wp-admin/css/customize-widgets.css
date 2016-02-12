@@ -308,7 +308,7 @@ body.adding-widget #customize-preview {
 }
 
 #available-widgets .saved-widget a {
-	cursor: pointer;
+	text-decoration: none;
 }
 
 #available-widgets .saved-widget-controls {
@@ -327,6 +327,7 @@ body.adding-widget #customize-preview {
 #available-widgets .delete-widget-permanently {
 	color: #a00;
 }
+
 #available-widgets .delete-widget-permanently:hover {
 	color: #f00;
 }

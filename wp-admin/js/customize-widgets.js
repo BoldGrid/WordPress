@@ -156,7 +156,7 @@
 			'click .widget-tpl' : '_submit',
 			'click .add-saved-widget' : '_submit',
 			'click .delete-widget-permanently' : '_delete',
-			'click .widget-tpl .widget-title-action' : '_showInactive',
+			'click .widget-tpl .widget-title-action' : '_toggleInactive',
 			'keypress .widget-tpl' : '_submit',
 			'keydown' : 'keyboardAccessible'
 		},
@@ -276,6 +276,7 @@
 			
 		},
 
+
 		// Highlights a widget
 		select: function( widgetTpl ) {
 			this.selected = $( widgetTpl );
@@ -288,29 +289,36 @@
 			this.select( $( event.currentTarget ) );
 		},
 		
-		// Slides down a list of active widgets per widget type
-		_showInactive : function ( event ) {
-			event.stopPropagation();
-
-			var $widgetTpl = $( event.currentTarget ).closest( '.widget-tpl' );
-			var idBase = $widgetTpl.data('id-base');
+		// show or hide the list of inactive widgets per widget id base
+		toggleInactive: function ( idBase ) {
+			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' );
 			var $inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
 			
 			$widgetTpl.toggleClass( 'expanded' );
 			$inactiveWidgets.stop().slideToggle( 'fast' );
 			
 			if ( $widgetTpl.hasClass('expanded') ) {
-				this.select( $inactiveWidgets.first() );
+				this.select( $inactiveWidgets.first().focus() );
 			} else {
-				this.select( $widgetTpl );
+				this.select( $widgetTpl.focus() );
 			}
 		},
 		
+		// Slides down a list of active widgets per widget type
+		_toggleInactive : function ( event ) {
+			event.stopPropagation();	
+			event.preventDefault();
+
+			var $widgetTpl = $( event.currentTarget ).closest( '.widget-tpl' );
+			this.toggleInactive( $widgetTpl.data('id-base') );
+		},
+		
 		_delete : function ( event ) {
-			var $currentTarget = $( event.currentTarget );
-			var inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' );
-			var widgetId = $currentTarget.closest('.saved-widget').data('widget-id');
-			var oldValue = inactiveWidgets();
+			var $currentTarget = $( event.currentTarget ),
+				inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' ),
+				widgetId = $currentTarget.closest('.saved-widget').data('widget-id'),
+				oldValue = inactiveWidgets();
+			
 			oldValue.splice( oldValue.indexOf( widgetId ), 1 );
 			inactiveWidgets( oldValue )
 		},
@@ -406,17 +414,19 @@
 			this.$search.val( '' );
 		},
 
-		// Add keyboard accessiblity to the panel
+		// Add keyboard accessibility to the panel
 		keyboardAccessible: function( event ) {
 			var isEnter = ( event.which === 13 ),
 				isEsc = ( event.which === 27 ),
 				isDown = ( event.which === 40 ),
 				isUp = ( event.which === 38 ),
+				isLeft = ( event.which === 37 ),
+				isRight = ( event.which === 39 ),
 				isTab = ( event.which === 9 ),
 				isShift = ( event.shiftKey ),
 				selected = null,
-				firstVisible = this.$el.find( '> .widget-tpl:visible:first' ),
-				lastVisible = this.$el.find( '> .widget-tpl:visible:last' ),
+				firstVisible = this.$el.find( '.widget-tpl:visible:first' ),
+				lastVisible = this.$el.find( '.widget-tpl:visible:last' ),
 				isSearchFocused = $( event.target ).is( this.$search ),
 				isLastWidgetFocused = $( event.target ).is( '.widget-tpl:visible:last' );
 
@@ -434,7 +444,7 @@
 						selected = this.selected.prevAll( '.widget-tpl:visible:first' );
 					}
 				}
-
+			
 				this.select( selected );
 
 				if ( selected ) {
@@ -443,6 +453,16 @@
 					this.$search.focus();
 				}
 
+				return;
+			}
+			
+			// Toggle display when the user presses left or right on widget template with inactive widgets 
+			if ( isLeft || isRight ) {
+				if ( this.selected && (this.selected.hasClass( 'has-inactive-widgets' ) || this.selected.hasClass( 'saved-widget' ) ) ) {
+					var idBase = this.selected.data('id-base');
+					this.toggleInactive( idBase );
+				}
+				
 				return;
 			}
 
