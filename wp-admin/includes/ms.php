@@ -309,7 +309,7 @@ All at ###SITENAME###
 
 	$current_user = wp_get_current_user();
 	$content = str_replace( '###USERNAME###', $current_user->user_login, $content );
-	$content = str_replace( '###ADMIN_URL###', esc_url( admin_url( 'options.php?adminhash='.$hash ) ), $content );
+	$content = str_replace( '###ADMIN_URL###', esc_url( self_admin_url( 'options.php?adminhash='.$hash ) ), $content );
 	$content = str_replace( '###EMAIL###', $value, $content );
 	$content = str_replace( '###SITENAME###', get_site_option( 'site_name' ), $content );
 	$content = str_replace( '###SITEURL###', network_home_url(), $content );
@@ -403,10 +403,15 @@ All at ###SITENAME###
  * after email address change.
  *
  * @since 3.0.0
+ *
+ * @global string $pagenow
  */
 function new_user_email_admin_notice() {
-	if ( strpos( $_SERVER['PHP_SELF'], 'profile.php' ) && isset( $_GET['updated'] ) && $email = get_option( get_current_user_id() . '_new_email' ) )
-		echo "<div class='update-nag'>" . sprintf( __( "Your email address has not been updated yet. Please check your inbox at %s for a confirmation email." ), $email['newemail'] ) . "</div>";
+	global $pagenow;
+	if ( 'profile.php' === $pagenow && isset( $_GET['updated'] ) && $email = get_option( get_current_user_id() . '_new_email' ) ) {
+		/* translators: %s: New email address */
+		echo '<div class="update-nag">' . sprintf( __( 'Your email address has not been updated yet. Please check your inbox at %s for a confirmation email.' ), esc_html( $email['newemail'] ) ) . '</div>';
+	}
 }
 
 /**
@@ -743,16 +748,25 @@ function mu_dropdown_languages( $lang_files = array(), $current = '' ) {
  *
  * @since 3.0.0
  *
- * @global int $wp_db_version The version number of the database.
+ * @global int    $wp_db_version The version number of the database.
+ * @global string $pagenow
  *
  * @return false False if the current user is not a super admin.
  */
 function site_admin_notice() {
-	global $wp_db_version;
-	if ( !is_super_admin() )
+	global $wp_db_version, $pagenow;
+
+	if ( ! is_super_admin() ) {
 		return false;
-	if ( get_site_option( 'wpmu_upgrade_site' ) != $wp_db_version )
+	}
+
+	if ( 'upgrade.php' == $pagenow ) {
+		return;
+	}
+
+	if ( get_site_option( 'wpmu_upgrade_site' ) != $wp_db_version ) {
 		echo "<div class='update-nag'>" . sprintf( __( 'Thank you for Updating! Please visit the <a href="%s">Upgrade Network</a> page to update all your sites.' ), esc_url( network_admin_url( 'upgrade.php' ) ) ) . "</div>";
+	}
 }
 
 /**
