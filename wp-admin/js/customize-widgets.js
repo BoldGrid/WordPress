@@ -334,7 +334,7 @@
 				var remainingWidgets = self.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
 				if ( !remainingWidgets.length ) {
 					self.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' )
-						.removeClass('has-inactive-widgets expanded');
+						.removeClass( 'has-inactive-widgets expanded' );
 				}
 
 			});
