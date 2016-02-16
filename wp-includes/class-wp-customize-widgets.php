@@ -748,7 +748,7 @@ final class WP_Customize_Widgets {
 						<h3><?php echo $saved_widget['type']; ?><span class="in-widget-title"></span></h3>
 						<div class='saved-widget-controls'>
 							<a href='#' class='add-saved-widget' data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>"
-							>Add</a>| <a href='#' class='delete-widget-permanently'>Delete Widget</a>
+							>Add</a> &#124; <a href='#' class='delete-widget-permanently'>Delete Widget</a>
 						</div>
 					</div>
 				<?php endforeach; ?>
@@ -834,6 +834,39 @@ final class WP_Customize_Widgets {
 			$sanitized_widget_ids[] = preg_replace( '/[^a-z0-9_\-]/', '', $widget_id );
 		}
 		return $sanitized_widget_ids;
+	}
+
+	/**
+	 * Create an list of saved widgets that correspond to a widget type.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @global array $wp_registered_widget_controls
+	 *
+	 * @return array List of saved widget by type.
+	 */
+	public function get_sorted_saved_widgets( ) {
+		global $wp_registered_widget_controls;
+	
+		$sidebars_widgets = wp_get_sidebars_widgets();
+	
+		$sorted_saved_widgets = array();
+		foreach ( $sidebars_widgets as $sidebars_widget ) {
+			foreach( $sidebars_widget as $widget ) {
+	
+				if ( isset ( $wp_registered_widget_controls[ $widget ]['id_base'] ) ) {
+					$current_base_id = $wp_registered_widget_controls[ $widget ]['id_base'];
+					$sorted_saved_widgets[ $current_base_id ][] = array(
+						'id' => $widget,
+						'type' => $wp_registered_widget_controls[ $widget ]['name'],
+					);
+				}
+	
+			}
+		}
+	
+		return $sorted_saved_widgets;
 	}
 
 	/**
@@ -927,43 +960,6 @@ final class WP_Customize_Widgets {
 		}
 		
 		return $available_widgets;
-	}
-	
-	/**
-	 * Build up an index of all available widgets for use in Backbone models.
-	 *
-	 * @since 4.5.0
-	 * @access public
-	 *
-	 * @global array $wp_registered_widgets
-	 * @global array $wp_registered_widget_controls
-	 * @staticvar array $available_widgets
-	 *
-	 * @see wp_list_widgets()
-	 *
-	 * @return array List of available widgets.
-	 */
-	public function get_sorted_saved_widgets( ) {
-		global $wp_registered_widget_controls;
-
-		$sidebars_widgets = wp_get_sidebars_widgets();
-		
-		$sorted_saved_widgets = array();
-		foreach ( $sidebars_widgets as $sidebars_widget ) {
-			foreach( $sidebars_widget as $widget ) {
-
-				if ( isset ( $wp_registered_widget_controls[ $widget ]['id_base'] ) ) {
-					$current_base_id = $wp_registered_widget_controls[ $widget ]['id_base'];
-					$sorted_saved_widgets[ $current_base_id ][] = array(
-						'id' => $widget,
-						'type' => $wp_registered_widget_controls[ $widget ]['name'],
-					);
-				}
-
-			}
-		}
-
-		return $sorted_saved_widgets;
 	}
 
 	/**
