@@ -1671,10 +1671,10 @@
 		 * @since 4.5.0
 		 */
 		toggleSaveForLater: function() {
-			var self = this, $moveWidgetArea, $saveForLater;
+			var $moveWidgetArea, $saveForLater;
 
 			$moveWidgetArea = this.container.find( '.move-widget-area' );
-			$saveForLater = this.container.find( "li[data-id='wp_inactive_widgets']");
+			$saveForLater = this.container.find( 'li[data-id="wp_inactive_widgets"]' );
 
 			if( $moveWidgetArea.hasClass( 'active' ) ) {
 				$saveForLater.show();
