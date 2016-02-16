@@ -892,11 +892,10 @@ final class WP_Customize_Widgets {
 		global $wp_registered_widgets, $wp_registered_widget_controls;
 		require_once ABSPATH . '/wp-admin/includes/widgets.php'; // for next_widget_id_number()
 
+		$sorted_saved_widgets = $this->get_sorted_saved_widgets();
 		$sort = $wp_registered_widgets;
 		usort( $sort, array( $this, '_sort_name_callback' ) );
 		$done = array();
-		
-		$sorted_saved_widgets = $this->get_sorted_saved_widgets();
 
 		foreach ( $sort as $widget ) {
 			if ( in_array( $widget['callback'], $done, true ) ) { // We already showed this multi-widget
@@ -904,12 +903,8 @@ final class WP_Customize_Widgets {
 			}
 
 			$sidebar = is_active_widget( $widget['callback'], $widget['id'], false, false );
-			if ( in_array( $widget['callback'], $done, true ) ) {
-				continue;
-			}
+			$done[]  = $widget['callback'];
 
-			$done[] = $widget['callback'];
-			
 			if ( ! isset( $widget['params'][0] ) ) {
 				$widget['params'][0] = array();
 			}
@@ -934,14 +929,14 @@ final class WP_Customize_Widgets {
 				$args['_add'] = 'single';
 
 				if ( $sidebar && 'wp_inactive_widgets' !== $sidebar ) {
-					$is_disabled = false;
+					$is_disabled = true;
 				}
 				$id_base = $widget['id'];
 			}
 
 			$list_widget_controls_args = wp_list_widget_controls_dynamic_sidebar( array( 0 => $args, 1 => $widget['params'][0] ) );
 			$control_tpl = $this->get_widget_control( $list_widget_controls_args );
-			
+
 			// The properties here are mapped to the Backbone Widget model.
 			$available_widget = array_merge( $available_widget, array(
 				'temp_id'      => isset( $args['_temp_id'] ) ? $args['_temp_id'] : null,
@@ -956,9 +951,10 @@ final class WP_Customize_Widgets {
 				'is_wide'      => $this->is_wide_widget( $widget['id'] ),
 				'saved_widgets' => isset( $sorted_saved_widgets[ $id_base ] ) ? $sorted_saved_widgets[ $id_base ] : array(),
 			) );
+
 			$available_widgets[] = $available_widget;
 		}
-		
+
 		return $available_widgets;
 	}
 
