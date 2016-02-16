@@ -12,7 +12,6 @@
 
 	// Link settings
 	api.Widgets.data = _wpCustomizeWidgetsSettings || {};
-
 	l10n = api.Widgets.data.l10n;
 	delete api.Widgets.data.l10n;
 
@@ -191,7 +190,6 @@
 
 			// Close the panel if the URL in the preview changes
 			api.previewer.bind( 'url', this.close );
-			
 		},
 
 		// Performs a search and handles selected widget
@@ -225,7 +223,7 @@
 			this.$el.find( '.widget-tpl.expanded' ).removeClass( 'expanded' );
 			
 		},
-		
+
 		// Changes visibility of available widgets
 		updateList: function() {
 			this.collection.each( function( widget ) {
@@ -236,8 +234,12 @@
 				}
 			} );
 		},
-		
-		// Show inactive widgets and hide active widgets.
+
+		/**
+		 * Show inactive widgets and hide active widgets.
+		 *
+		 * @since 4.5.0
+		 */
 		updateVisibleSavedWidgets : function () {
 			var self = this;
 			
@@ -275,21 +277,12 @@
 			} );
 			
 		},
-
-
-		// Highlights a widget
-		select: function( widgetTpl ) {
-			this.selected = $( widgetTpl );
-			this.selected.siblings( '.widget-tpl' ).removeClass( 'selected' );
-			this.selected.addClass( 'selected' );
-		},
-
-		// Highlights a widget on focus
-		focus: function( event ) {
-			this.select( $( event.currentTarget ) );
-		},
 		
-		// Show or hide the list of inactive widgets per widget id base.
+		/**
+		 * Show or hide the list of inactive widgets per widget id base.
+		 *
+		 * @since 4.5.0
+		 */
 		toggleInactive: function ( idBase ) {
 			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' );
 			var $inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
@@ -304,7 +297,11 @@
 			}
 		},
 		
-		// Slides down a list of active widgets per widget type.
+		/**
+		 * Slides down a list of active widgets per widget type.
+		 *
+		 * @since 4.5.0
+		 */
 		_toggleInactive : function ( event ) {
 			event.stopPropagation();	
 			event.preventDefault();
@@ -313,7 +310,11 @@
 			this.toggleInactive( $widgetTpl.data('id-base') );
 		},
 		
-		// Permanently delete a widget.
+		/**
+		 * Permanently delete a widget.
+		 *
+		 * @since 4.5.0
+		 */
 		_delete : function ( event ) {
 			var self = this,
 				$currentTarget = $( event.currentTarget ),
@@ -337,6 +338,18 @@
 				}
 
 			});
+		},
+
+		// Highlights a widget
+		select: function( widgetTpl ) {
+			this.selected = $( widgetTpl );
+			this.selected.siblings( '.widget-tpl' ).removeClass( 'selected' );
+			this.selected.addClass( 'selected' );
+		},
+
+		// Highlights a widget on focus
+		focus: function( event ) {
+			this.select( $( event.currentTarget ) );
 		},
 
 		// Submit handler for keypress and click on widget
@@ -460,7 +473,7 @@
 						selected = this.selected.prevAll( '.widget-tpl:visible:first' );
 					}
 				}
-			
+
 				this.select( selected );
 
 				if ( selected ) {
@@ -472,7 +485,7 @@
 				return;
 			}
 			
-			// Toggle display when the user presses left or right on widget template with inactive widgets 
+			// Toggle display when the user presses left or right on widget template with inactive widgets.
 			if ( isLeft || isRight ) {
 				if ( this.selected && (this.selected.hasClass( 'has-inactive-widgets' ) || this.selected.hasClass( 'saved-widget' ) ) ) {
 					var idBase = this.selected.data('id-base');
@@ -558,7 +571,6 @@
 			});
 
 			api.Control.prototype.initialize.call( control, id, options );
-
 		},
 
 		/**
@@ -1030,6 +1042,7 @@
 
 		/**
 		 * Set up event handlers for widget move.
+		 * @since 4.5.0
 		 */
 		_setupMoveUI: function() {
 			var self = this, $moveBtn, $reorderToggle, replaceDeleteWithMove;
@@ -1059,7 +1072,7 @@
 		 * Set up event handlers for widget removal.
 		 */
 		_setupRemoveUI: function() {
-			var self = this, $closeBtn, replaceCloseWithRemove;
+			var self = this, $closeBtn;
 
 			// Configure remove button
 			$closeBtn = this.container.find( 'a.widget-control-close' );
@@ -1102,12 +1115,8 @@
 				} );
 			} );
 
-			replaceCloseWithRemove = function() {
-				$closeBtn.text( l10n.removeBtnLabel ); // wp_widget_control() outputs the link as "Close"
-				$closeBtn.attr( 'title', l10n.removeBtnTooltip );
-			};
-
-			replaceCloseWithRemove();
+			$closeBtn.text( l10n.removeBtnLabel ); // wp_widget_control() outputs the link as "Close"
+			$closeBtn.attr( 'title', l10n.removeBtnTooltip );
 		},
 
 		/**
@@ -1229,7 +1238,7 @@
 		updateWidget: function( args ) {
 			var self = this, instanceOverride, completeCallback, $widgetRoot, $widgetContent,
 				updateNumber, params, data, $inputs, processing, jqxhr, isChanged;
-			
+
 			// The updateWidget logic requires that the form fields to be fully present.
 			self.embedWidgetContent();
 
@@ -1397,7 +1406,6 @@
 			} );
 
 			jqxhr.always( function() {
-
 				self.container.removeClass( 'widget-form-loading' );
 
 				$inputs.each( function() {
@@ -1644,6 +1652,8 @@
 
 		/**
 		 * Open widget move area if control is not active already.
+		 *
+		 * @since 4.5.0
 		 */
 		openWidgetMoveArea: function() {
 			var self = this, $moveWidgetArea;
@@ -1657,6 +1667,8 @@
 
 		/**
 		 * Toggle visibility of the Save For Later/Inactive Widget Sidebar section.
+		 *
+		 * @since 4.5.0
 		 */
 		toggleSaveForLater: function() {
 			var self = this, $moveWidgetArea, $saveForLater;
