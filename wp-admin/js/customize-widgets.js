@@ -217,11 +217,11 @@
 					this.select( firstVisible );
 				}
 			}
-			
+
 			// Collapse inactive widgets upon searching.
 			this.$el.find( '.saved-widget' ).hide();
 			this.$el.find( '.widget-tpl.expanded' ).removeClass( 'expanded' );
-			
+
 		},
 
 		// Changes visibility of available widgets
@@ -242,32 +242,35 @@
 		 */
 		updateVisibleSavedWidgets : function () {
 			var self = this;
-			
+
 			// Remove state classes.
 			this.$el.find( '.widget-tpl.has-inactive-widgets, .widget-tpl.expanded' )
 				.removeClass( 'has-inactive-widgets' )
 				.removeClass( 'expanded' );
-			
+
 			// Hide all inactive widgets
 			this.$el.find( '.saved-widget' )
 				.hide()
 				.removeClass( 'inactive-widget' );
-			
+
 			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
+				var $savedWidget, baseId, parsedWidgetId, widgetSetting, title, $inWidgetTitle; 
+
 				if ( widgetId ) {
 
-					var $savedWidget 	= self.$el.find( '#saved-widget-' + widgetId );
-					var base_id 		= $savedWidget.data( 'id-base' );
-					var parsedWidgetId 	= parseWidgetId( widgetId );
-					var widget_setting 	= api( 'widget_' + base_id + '[' + parsedWidgetId.number + ']' );
-					var title = (widget_setting) ? widget_setting().title : null;
+					$savedWidget = self.$el.find( '#saved-widget-' + widgetId );
+					baseId = $savedWidget.data( 'id-base' );
+					parsedWidgetId = parseWidgetId( widgetId );
+					widgetSetting = api( 'widget_' + baseId + '[' + parsedWidgetId.number + ']' );
+					title = ( widgetSetting ) ? widget_setting().title : null;
+
 					$savedWidget.addClass( 'inactive-widget' );
-					
-					self.$el.find( '.widget-tpl[data-id-base="' + base_id + '"]' )
+
+					self.$el.find( '.widget-tpl[data-id-base="' + baseId + '"]' )
 						.not('.saved-widget')
 						.addClass( 'has-inactive-widgets' );
-					
-					var $inWidgetTitle = $savedWidget.find( '.in-widget-title' );
+
+					$inWidgetTitle = $savedWidget.find( '.in-widget-title' );
 					if ( title ) {
 						$inWidgetTitle.text( ': ' + title );
 					} else {
@@ -284,12 +287,12 @@
 		 * @since 4.5.0
 		 */
 		toggleInactive: function ( idBase ) {
-			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' );
-			var $inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
-			
+			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' ),
+				$inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
+
 			$widgetTpl.toggleClass( 'expanded' );
 			$inactiveWidgets.stop().slideToggle( 'fast' );
-			
+
 			if ( $widgetTpl.hasClass('expanded') ) {
 				this.select( $inactiveWidgets.first().focus() );
 			} else {
@@ -322,22 +325,26 @@
 				$savedWidgets = $currentTarget.closest('.saved-widget'),
 				widgetId = $savedWidgets.data('widget-id'),
 				idBase = $savedWidgets.data('id-base'),
-				oldValue = inactiveWidgets();
+				oldValue = inactiveWidgets(),
+				deleteCallback;
 			
 			oldValue.splice( oldValue.indexOf( widgetId ), 1 );
 			inactiveWidgets( oldValue );
 			
-			$currentTarget.closest('.saved-widget').slideUp('fast' , function ()  {
+			deleteCallback = function () {
+				var $remainingWidgets;
+
 				$(this).remove();
-				
+
 				// Remove drop down if widgets no longer exist
-				var remainingWidgets = self.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
-				if ( !remainingWidgets.length ) {
+				$remainingWidgets = self.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
+				if ( ! $remainingWidgets.length ) {
 					self.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' )
 						.removeClass( 'has-inactive-widgets expanded' );
 				}
+			};
 
-			});
+			$currentTarget.closest( '.saved-widget' ).slideUp( 'fast' , deleteCallback );
 		},
 
 		// Highlights a widget
@@ -384,17 +391,17 @@
 			if ( ! widget && ! isSavedWidget ) {
 				return;
 			}
-			
+
 			if ( ( isSavedWidget && !api.Widgets.data.registeredWidgets[ widgetId ] ) || $selectedWidget.hasClass( 'saved-widget' ) ) {
 				return;
 			}
-			
+
 			if ( isSavedWidget ) {
 				widgetFormControl = this.currentSidebarControl.addWidget( widgetId );
 			} else {
 				widgetFormControl = this.currentSidebarControl.addWidget( widget.get( 'id_base' ) );
 			}
-			
+
 			if ( widgetFormControl ) {
 				widgetFormControl.focus();
 			}
