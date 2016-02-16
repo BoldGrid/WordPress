@@ -1806,7 +1806,12 @@ function comment_id_fields( $id = 0 ) {
  *
  * Only affects users with JavaScript disabled.
  *
+ * @internal The $comment global must be present to allow template tags access to the current
+ *           comment. See https://core.trac.wordpress.org/changeset/36512.
+ *
  * @since 2.7.0
+ *
+ * @global WP_Comment $comment Current comment.
  *
  * @param string $noreplytext  Optional. Text to display when not replying to a comment.
  *                             Default false.
@@ -1817,7 +1822,7 @@ function comment_id_fields( $id = 0 ) {
  *                             to their comment. Default true.
  */
 function comment_form_title( $noreplytext = false, $replytext = false, $linktoparent = true ) {
-	$comment = get_comment();
+	global $comment;
 
 	if ( false === $noreplytext ) $noreplytext = __( 'Leave a Reply' );
 	if ( false === $replytext ) $replytext = __( 'Leave a Reply to %s' );
@@ -1827,6 +1832,7 @@ function comment_form_title( $noreplytext = false, $replytext = false, $linktopa
 	if ( 0 == $replytoid )
 		echo $noreplytext;
 	else {
+		// Sets the global so that template tags can be used in the comment form.
 		$comment = get_comment($replytoid);
 		$author = ( $linktoparent ) ? '<a href="#comment-' . get_comment_ID() . '">' . get_comment_author( $comment ) . '</a>' : get_comment_author( $comment );
 		printf( $replytext, $author );
@@ -2056,6 +2062,8 @@ function wp_list_comments( $args = array(), $comments = null ) {
  * @since 4.2.0 Introduced the 'submit_button' and 'submit_fields' arguments.
  * @since 4.4.0 Introduced the 'class_form', 'title_reply_before', 'title_reply_after',
  *              'cancel_reply_before', and 'cancel_reply_after' arguments.
+ * @since 4.5.0 The 'author', 'email', and 'url' form fields are limited to 245, 100,
+ *              and 200 characters, respectively.
  *
  * @param array       $args {
  *     Optional. Default arguments and form fields to override.
