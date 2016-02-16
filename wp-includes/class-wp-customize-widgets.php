@@ -748,7 +748,7 @@ final class WP_Customize_Widgets {
 						<h3><?php echo $saved_widget['type']; ?><span class="in-widget-title"></span></h3>
 						<div class='saved-widget-controls'>
 							<a href='#' class='add-saved-widget' data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>"
-							>Add</a> &#124; <a href='#' class='delete-widget-permanently'>Delete Widget</a>
+							><?php _e( 'Add' ) ?></a> &#124; <a href='#' class='delete-widget-permanently'><?php _e( 'Delete' ) ?></a>
 						</div>
 					</div>
 				<?php endforeach; ?>
