@@ -1354,27 +1354,76 @@ final class WP_Customize_Widgets {
 	 * @param $setting WP_Customize_Setting.
 	 */
 	public function delete_widgets( $setting ) {
+		$this->customize_controls_init();
+
 		global $wp_registered_widget_controls;
 
 		$widget_ids = $setting->post_value();
 		$widget_ids = ( is_array ( $widget_ids ) ) ? $widget_ids : array();
+		$original_post_values = $_POST;
+		$sidebar_id = 'wp_inactive_widgets';
+
 		foreach( $widget_ids as $widget_id ) {
 
 			$widget = !empty( $wp_registered_widget_controls[$widget_id] ) ? $wp_registered_widget_controls[$widget_id] : null;
 			$sidebar_widgets = wp_get_sidebars_widgets();
+
 			// Make sure the widget is in the inactive widget area.
-			if ( $widget && false !== array_search( $widget_id, $sidebar_widgets['wp_inactive_widgets'] ) ) {
+			if ( $widget && false !== array_search( $widget_id, $sidebar_widgets[ $sidebar_id ] ) ) {
+
+				$post_values_added = array( 'sidebar', 'widget-' . $widget['id_base'], 'the-widget-id', 'delete_widget' );
+
+				//Set post values needed in widget update_callback
+				$_POST[ 'sidebar' ] = $sidebar_id;
+				$_POST[ 'widget-' . $widget['id_base'] ] = array();
+				$_POST[ 'the-widget-id' ] = $widget_id;
+				$_POST[ 'delete_widget' ] = '1';
 
 				/** This action is documented in wp-admin/widgets.php */
-				do_action( 'delete_widget', $widget_id, 'wp_inactive_widgets', $widget['id_base'] );
+				do_action( 'delete_widget', $widget_id, $sidebar_id, $widget['id_base'] );
+
+				// Invoke the widget update callback.
+				$this->invoke_update_callback( $widget['id_base'] );
 
 				// Remove from sidebar.
-				$sidebar = array_diff( $sidebar_widgets['wp_inactive_widgets'], array( $widget_id ) );
-				$sidebar_widgets['wp_inactive_widgets'] = $sidebar;
+				$sidebar = array_diff( $sidebar_widgets[ $sidebar_id ], array( $widget_id ) );
+				$sidebar_widgets[ $sidebar_id ] = $sidebar;
 				wp_set_sidebars_widgets( $sidebar_widgets );
+
+				// Unset Post values.
+				foreach ( $post_values_added as $key ) {
+					if ( isset( $_POST[ $key ] ) ) {
+						unset( $_POST[ $key ] );
+					}
+				}
 
 			}
 		}
+	}
+
+	/**
+	 * Invoke the widget update callback.
+	 *
+	 * @since 4.5.0
+	 * @access protected
+	 *
+	 * @global array $wp_registered_widget_controls
+	 *
+	 * @param  string $widget_id_base widget base id.
+	 */
+	protected function invoke_update_callback( $widget_id_base ) {
+		global $wp_registered_widget_updates;
+
+		// Invoke the widget update callback.
+		foreach ( (array) $wp_registered_widget_updates as $name => $control ) {
+			if ( $name === $widget_id_base && is_callable( $control['callback'] ) ) {
+				ob_start();
+				call_user_func_array( $control['callback'], $control['params'] );
+				ob_end_clean();
+				break;
+			}
+		}
+
 	}
 
 	/**
@@ -1385,7 +1434,6 @@ final class WP_Customize_Widgets {
 	 * @since 3.9.0
 	 * @access public
 	 *
-	 * @global array $wp_registered_widget_updates
 	 * @global array $wp_registered_widget_controls
 	 *
 	 * @param  string $widget_id Widget ID.
@@ -1393,7 +1441,7 @@ final class WP_Customize_Widgets {
 	 *                        A WP_Error object, otherwise.
 	 */
 	public function call_widget_update( $widget_id ) {
-		global $wp_registered_widget_updates, $wp_registered_widget_controls;
+		global $wp_registered_widget_controls;
 
 		$setting_id = $this->get_setting_id( $widget_id );
 
@@ -1446,14 +1494,7 @@ final class WP_Customize_Widgets {
 		}
 
 		// Invoke the widget update callback.
-		foreach ( (array) $wp_registered_widget_updates as $name => $control ) {
-			if ( $name === $parsed_id['id_base'] && is_callable( $control['callback'] ) ) {
-				ob_start();
-				call_user_func_array( $control['callback'], $control['params'] );
-				ob_end_clean();
-				break;
-			}
-		}
+		$this->invoke_update_callback( $parsed_id['id_base'] );
 
 		// Clean up any input vars that were manually added
 		foreach ( $added_input_vars as $key ) {
