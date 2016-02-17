@@ -530,6 +530,9 @@ body.adding-widget #customize-preview {
 	.widget-reorder-nav span:before {
 		line-height: 39px;
 	}
+	#available-widgets .widget-top {
+		position: static;
+	}
 	#customize-theme-controls .widget-area-select li {
 		padding: 9px 15px 11px 42px;
 	}

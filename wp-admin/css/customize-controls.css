@@ -1779,4 +1779,8 @@ body.adding-widget .add-new-widget:before,
 	#available-widgets-list {
 		top: 140px;
 	}
+
+	.wp-customizer #available-widgets .saved-widget-controls {
+		visibility: visible;
+	}
 }
