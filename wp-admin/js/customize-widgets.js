@@ -1097,7 +1097,7 @@
 
 				self.container.slideUp( function() {
 					var sidebarsWidgetsControl = api.Widgets.getSidebarWidgetControlContainingWidget( self.params.widget_id ),
-						sidebarWidgetIds, i, inactiveWidgets;
+						sidebarWidgetIds, i, inactiveWidgets, inactiveWidgets;
 
 					if ( ! sidebarsWidgetsControl ) {
 						return;
@@ -1108,15 +1108,16 @@
 					if ( -1 === i ) {
 						return;
 					}
-				
+
 					sidebarWidgetIds.splice( i, 1 );
 					sidebarsWidgetsControl.setting( sidebarWidgetIds );
-					
+
 					// Add widget to inactive widgets.
-					inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' )();
+					var inactiveWidgetSetting = api( 'sidebars_widgets[wp_inactive_widgets]' );
+					var inactiveWidgets = inactiveWidgetSetting();
 					inactiveWidgets.push( self.params.widget_id );
-					api.value( 'sidebars_widgets[wp_inactive_widgets]' )( _( inactiveWidgets ).unique() );
-					
+					inactiveWidgetSetting.set([]).set( _( inactiveWidgets ).unique() );
+
 					$adjacentFocusTarget.focus(); // keyboard accessibility
 				} );
 			} );
