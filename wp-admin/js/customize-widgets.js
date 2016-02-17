@@ -1116,7 +1116,7 @@
 					var inactiveWidgetSetting = api( 'sidebars_widgets[wp_inactive_widgets]' );
 					var inactiveWidgets = inactiveWidgetSetting();
 					inactiveWidgets.push( self.params.widget_id );
-					inactiveWidgetSetting.set([]).set( _( inactiveWidgets ).unique() );
+					inactiveWidgetSetting.set( [] ).set( _( inactiveWidgets ).unique() );
 
 					$adjacentFocusTarget.focus(); // keyboard accessibility
 				} );
