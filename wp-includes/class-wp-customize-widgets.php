@@ -95,6 +95,7 @@ final class WP_Customize_Widgets {
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'print_footer_scripts' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'output_widget_control_templates' ) );
 		add_action( 'customize_preview_init',                  array( $this, 'customize_preview_init' ) );
+		add_action( 'customize_save_widgets_deleted',          array( $this, 'delete_widgets' ) );
 		add_filter( 'customize_refresh_nonces',                array( $this, 'refresh_nonces' ) );
 
 		add_action( 'dynamic_sidebar',                         array( $this, 'tally_rendered_widgets' ) );
@@ -361,6 +362,15 @@ final class WP_Customize_Widgets {
 			'priority'        => 110,
 			'active_callback' => array( $this, 'is_panel_active' ),
 		) );
+
+		// Add setting that keeps track of deleted widgets during customization.
+		$setting_id = 'widgets_deleted';
+		$setting_args = $this->get_setting_args( $setting_id, array(
+			'type' => 'global_variable',
+			'transport' => 'postMessage',
+		) );
+
+		$this->manager->add_setting( $setting_id, $setting_args );
 
 		foreach ( $sidebars_widgets as $sidebar_id => $sidebar_widget_ids ) {
 			if ( empty( $sidebar_widget_ids ) ) {
@@ -793,7 +803,7 @@ final class WP_Customize_Widgets {
 			'default'    => array(),
 		);
 
-		if ( preg_match( $this->setting_id_patterns['sidebar_widgets'], $id, $matches ) ) {
+		if ( preg_match( $this->setting_id_patterns['sidebar_widgets'], $id, $matches ) || 'widgets_deleted' == $id ) {
 			$args['sanitize_callback'] = array( $this, 'sanitize_sidebar_widgets' );
 			$args['sanitize_js_callback'] = array( $this, 'sanitize_sidebar_widgets_js_instance' );
 		} elseif ( preg_match( $this->setting_id_patterns['widget_instance'], $id, $matches ) ) {
@@ -833,6 +843,7 @@ final class WP_Customize_Widgets {
 		foreach ( $widget_ids as $widget_id ) {
 			$sanitized_widget_ids[] = preg_replace( '/[^a-z0-9_\-]/', '', $widget_id );
 		}
+
 		return $sanitized_widget_ids;
 	}
 
@@ -840,13 +851,13 @@ final class WP_Customize_Widgets {
 	 * Create an list of saved widgets that correspond to a widget type.
 	 *
 	 * @since 4.5.0
-	 * @access public
+	 * @access protected
 	 *
 	 * @global array $wp_registered_widget_controls
 	 *
 	 * @return array List of saved widget by type.
 	 */
-	public function get_sorted_saved_widgets() {
+	protected function get_sorted_saved_widgets() {
 		global $wp_registered_widget_controls;
 	
 		$sidebars_widgets = wp_get_sidebars_widgets();
@@ -1327,6 +1338,43 @@ final class WP_Customize_Widgets {
 		global $wp_registered_widgets;
 		$widget_ids = array_values( array_intersect( $widget_ids, array_keys( $wp_registered_widgets ) ) );
 		return $widget_ids;
+	}
+
+	/**
+	 * Delete all widgets deleted by the user during customization.
+	 *
+	 * This method is bound to saving the widgets_deleted setting. This setting is only appended when the
+	 * user chooses the delete option from a widget that is in an inactive widget area.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @global array $wp_registered_widget_controls
+	 *
+	 * @param $setting WP_Customize_Setting.
+	 */
+	public function delete_widgets( $setting ) {
+		global $wp_registered_widget_controls;
+
+		$widget_ids = $setting->post_value();
+		$widget_ids = ( is_array ( $widget_ids ) ) ? $widget_ids : array();
+		foreach( $widget_ids as $widget_id ) {
+
+			$widget = !empty( $wp_registered_widget_controls[$widget_id] ) ? $wp_registered_widget_controls[$widget_id] : null;
+			$sidebar_widgets = wp_get_sidebars_widgets();
+			// Make sure the widget is in the inactive widget area.
+			if ( $widget && false !== array_search( $widget_id, $sidebar_widgets['wp_inactive_widgets'] ) ) {
+
+				/** This action is documented in wp-admin/widgets.php */
+				do_action( 'delete_widget', $widget_id, 'wp_inactive_widgets', $widget['id_base'] );
+
+				// Remove from sidebar.
+				$sidebar = array_diff( $sidebar_widgets['wp_inactive_widgets'], array( $widget_id ) );
+				$sidebar_widgets['wp_inactive_widgets'] = $sidebar;
+				wp_set_sidebars_widgets( $sidebar_widgets );
+
+			}
+		}
 	}
 
 	/**

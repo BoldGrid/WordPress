@@ -262,7 +262,7 @@
 					baseId = $savedWidget.data( 'id-base' );
 					parsedWidgetId = parseWidgetId( widgetId );
 					widgetSetting = api( 'widget_' + baseId + '[' + parsedWidgetId.number + ']' );
-					title = ( widgetSetting ) ? widget_setting().title : null;
+					title = ( widgetSetting ) ? widgetSetting().title : null;
 
 					$savedWidget.addClass( 'inactive-widget' );
 
@@ -312,7 +312,7 @@
 			var $widgetTpl = $( event.currentTarget ).closest( '.widget-tpl' );
 			this.toggleInactive( $widgetTpl.data('id-base') );
 		},
-		
+
 		/**
 		 * Permanently delete a widget.
 		 *
@@ -321,15 +321,14 @@
 		_delete : function ( event ) {
 			var self = this,
 				$currentTarget = $( event.currentTarget ),
-				inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' ),
+				widgetsDeleted = api( 'widgets_deleted' )(),
 				$savedWidgets = $currentTarget.closest('.saved-widget'),
 				widgetId = $savedWidgets.data('widget-id'),
 				idBase = $savedWidgets.data('id-base'),
-				oldValue = inactiveWidgets(),
 				deleteCallback;
 			
-			oldValue.splice( oldValue.indexOf( widgetId ), 1 );
-			inactiveWidgets( oldValue );
+			widgetsDeleted.push( widgetId );
+			api( 'widgets_deleted' ).set( [] ).set( _( widgetsDeleted ).unique() );
 			
 			deleteCallback = function () {
 				var $remainingWidgets;
