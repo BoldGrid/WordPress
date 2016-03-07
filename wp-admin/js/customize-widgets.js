@@ -34,7 +34,7 @@
 		multi_number: null,
 		name: null,
 		id_base: null,
-		transport: 'refresh',
+		transport: api.Widgets.data.selectiveRefresh ? 'postMessage' : 'refresh',
 		params: [],
 		width: null,
 		height: null,
@@ -809,7 +809,7 @@
 		 */
 		_setupReorderUI: function() {
 			var self = this, selectSidebarItem, $moveWidgetArea,
-				$reorderNav, updateAvailableSidebars;
+				$reorderNav, updateAvailableSidebars, template;
 
 			/**
 			 * select the provided sidebar list item in the move widget area
@@ -827,8 +827,10 @@
 			 * Add the widget reordering elements to the widget control
 			 */
 			this.container.find( '.widget-title-action' ).after( $( api.Widgets.data.tpl.widgetReorderNav ) );
-			$moveWidgetArea = $(
-				_.template( api.Widgets.data.tpl.moveWidgetArea, {
+
+
+			template = _.template( api.Widgets.data.tpl.moveWidgetArea );
+			$moveWidgetArea = $( template( {
 					sidebars: _( api.Widgets.registeredSidebars.toArray() ).pluck( 'attributes' )
 				} )
 			);
@@ -2186,7 +2188,7 @@
 			isExistingWidget = api.has( settingId );
 			if ( ! isExistingWidget ) {
 				settingArgs = {
-					transport: 'refresh',
+					transport: api.Widgets.data.selectiveRefresh ? 'postMessage' : 'refresh',
 					previewer: this.setting.previewer
 				};
 				setting = api.create( settingId, settingId, '', settingArgs );
