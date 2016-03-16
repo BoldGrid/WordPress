@@ -154,7 +154,7 @@
 			'focus .widget-tpl' : 'focus',
 			'click .widget-tpl' : '_submit',
 			'click .add-saved-widget' : '_submit',
-			'click .delete-widget-permanently' : '_delete',
+			'click .delete-widget-permanently' : '_setupDeleteUI',
 			'click .widget-tpl .widget-title-action' : '_toggleInactive',
 			'keypress .widget-tpl' : '_submit',
 			'keydown' : 'keyboardAccessible'
@@ -238,7 +238,7 @@
 		/**
 		 * Show inactive widgets and hide active widgets.
 		 *
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
 		updateVisibleSavedWidgets : function () {
 			var self = this;
@@ -284,7 +284,7 @@
 		/**
 		 * Show or hide the list of inactive widgets per widget id base.
 		 *
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
 		toggleInactive: function ( idBase ) {
 			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' ),
@@ -303,7 +303,7 @@
 		/**
 		 * Slides down a list of active widgets per widget type.
 		 *
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
 		_toggleInactive : function ( event ) {
 			event.stopPropagation();	
@@ -316,24 +316,41 @@
 		/**
 		 * Permanently delete a widget.
 		 *
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
-		_delete : function ( event ) {
+		_setupDeleteUI : function ( event ) {
 			var self = this,
 				$currentTarget = $( event.currentTarget ),
-				widgetsDeleted = api( 'widgets_deleted' )(),
-				$savedWidgets = $currentTarget.closest('.saved-widget'),
-				widgetId = $savedWidgets.data('widget-id'),
-				idBase = $savedWidgets.data('id-base'),
-				deleteCallback;
+				$savedWidgets = $currentTarget.closest( '.saved-widget' ),
+				widgetId = $savedWidgets.data( 'widget-id' ),
+				idBase = $savedWidgets.data( 'id-base' ),
+				settingId = widgetIdToSettingId( widgetId ),
+				deleteCallback,
+				otherSidebarWidgets,
+				inactiveWidgets,
+				control,
+				i;
 			
-			widgetsDeleted.push( widgetId );
-			api( 'widgets_deleted' ).set( [] ).set( _( widgetsDeleted ).unique() );
-			
+			// Remove from sidebar.
+			inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' );
+
+			otherSidebarWidgets = inactiveWidgets().slice(),
+			i = _.indexOf( otherSidebarWidgets, widgetId );
+			if ( -1 !== i ) {
+				otherSidebarWidgets.splice( i, 1 );
+				inactiveWidgets( otherSidebarWidgets );
+			}
+
+			api( settingId ).set( {} ).set( false );
+			control = api.Widgets.getWidgetFormControlForWidget( widgetId );
+			control.updateWidget( {
+				instance: control.setting()
+			} );
+
 			deleteCallback = function () {
 				var $remainingWidgets;
 
-				$(this).remove();
+				$( this ).remove();
 
 				// Remove drop down if widgets no longer exist
 				$remainingWidgets = self.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
@@ -1050,7 +1067,7 @@
 
 		/**
 		 * Set up event handlers for widget move.
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
 		_setupMoveUI: function() {
 			var self = this, $moveBtn, $reorderToggle, replaceDeleteWithMove;
@@ -1284,6 +1301,7 @@
 			params.nonce = api.settings.nonce['update-widget'];
 			params.theme = api.settings.theme.stylesheet;
 			params.customized = wp.customize.previewer.query().customized;
+			params.delete_widget = ( false === self.setting() );
 
 			data = $.param( params );
 			$inputs = this._getInputs( $widgetContent );
@@ -1297,9 +1315,10 @@
 
 			if ( instanceOverride ) {
 				data += '&' + $.param( { 'sanitized_widget_setting': JSON.stringify( instanceOverride ) } );
-			} else {
+			} else if ( $inputs.length ) {
 				data += '&' + $inputs.serialize();
 			}
+
 			data += '&' + $widgetContent.find( '~ :input' ).serialize();
 
 			if ( this._previousUpdateRequest ) {
@@ -1380,7 +1399,7 @@
 					 * preview finishing loading.
 					 */
 					isChanged = ! isLiveUpdateAborted && ! _( self.setting() ).isEqual( r.data.instance );
-					if ( isChanged ) {
+					if ( isChanged || false === args.instance ) {
 						self.isWidgetUpdating = true; // suppress triggering another updateWidget
 						self.setting( r.data.instance );
 						self.isWidgetUpdating = false;
@@ -1662,7 +1681,7 @@
 		/**
 		 * Open widget move area if control is not active already.
 		 *
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
 		openWidgetMoveArea: function() {
 			var self = this, $moveWidgetArea;
@@ -1677,7 +1696,7 @@
 		/**
 		 * Toggle visibility of the Save For Later/Inactive Widget Sidebar section.
 		 *
-		 * @since 4.5.0
+		 * @since 4.6.0
 		 */
 		toggleSaveForLater: function() {
 			var $moveWidgetArea, $saveForLater;

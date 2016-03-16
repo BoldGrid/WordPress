@@ -769,8 +769,15 @@ class WP_Customize_Setting {
 
 		$result = $this->multidimensional( $root, $keys, true );
 
-		if ( isset( $result ) )
-			$result['node'][ $result['key'] ] = $value;
+		if ( isset( $result ) ) {
+
+			if ( ! empty( $value['multidimensional_delete'] ) ) {
+				unset( $result['node'][ $result['key'] ] );
+			} else {
+				$result['node'][ $result['key'] ] = $value;
+			}
+
+		}
 
 		return $root;
 	}
