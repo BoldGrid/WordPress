@@ -1344,30 +1344,6 @@ final class WP_Customize_Widgets {
 	}
 
 	/**
-	 * Invoke the widget update callback.
-	 *
-	 * @since 4.6.0
-	 * @access protected
-	 *
-	 * @global array $wp_registered_widget_controls
-	 *
-	 * @param  string $widget_id_base widget base id.
-	 */
-	protected function invoke_update_callback( $widget_id_base ) {
-		global $wp_registered_widget_updates;
-		// Invoke the widget update callback.
-		foreach ( (array) $wp_registered_widget_updates as $name => $control ) {
-			if ( $name === $widget_id_base && is_callable( $control['callback'] ) ) {
-				ob_start();
-				call_user_func_array( $control['callback'], $control['params'] );
-				ob_end_clean();
-				break;
-			}
-		}
-
-	}
-
-	/**
 	 * Finds and invokes the widget update and control callbacks.
 	 *
 	 * Requires that `$_POST` be populated with the instance data.
@@ -1376,13 +1352,14 @@ final class WP_Customize_Widgets {
 	 * @access public
 	 *
 	 * @global array $wp_registered_widget_controls
+	 * @global array $wp_registered_widget_updates
 	 *
 	 * @param  string $widget_id Widget ID.
 	 * @return WP_Error|array Array containing the updated widget information.
 	 *                        A WP_Error object, otherwise.
 	 */
 	public function call_widget_update( $widget_id ) {
-		global $wp_registered_widget_controls;
+		global $wp_registered_widget_controls, $wp_registered_widget_updates;
 
 		$setting_id = $this->get_setting_id( $widget_id );
 		/*
@@ -1434,14 +1411,17 @@ final class WP_Customize_Widgets {
 			}
 		}
 
-		if ( ! empty ( $_POST[ 'delete_widget' ] ) ) {
+		// If deleting widget.
+		$is_widget_delete = ! empty( $this->get_post_value( 'delete_widget' ) );
+
+		if ( $is_widget_delete ) {
 			// Set post values needed in widget update_callback.
 			$_POST[ 'sidebar' ] = 'wp_inactive_widgets';
 			$_POST[ 'widget-' . $parsed_id['id_base'] ] = array();
 			$_POST[ 'the-widget-id' ] = $widget_id;
 			$_POST[ 'delete_widget' ] = '1';
 
-			$post_values_added = array( 'sidebar', 'widget-' . $parsed_id[ 'id_base' ], 'the-widget-id' );
+			$post_values_added = array( 'sidebar', 'widget-' . $parsed_id[ 'id_base' ], 'the-widget-id', 'delete_widget' );
 			$added_input_vars = array_merge( $added_input_vars, $post_values_added );
 
 			/** This action is documented in wp-admin/widgets.php */
@@ -1449,7 +1429,14 @@ final class WP_Customize_Widgets {
 		}
 
 		// Invoke the widget update callback.
-		$this->invoke_update_callback( $parsed_id['id_base'] );
+		foreach ( (array) $wp_registered_widget_updates as $name => $control ) {
+			if ( $name === $parsed_id['id_base'] && is_callable( $control['callback'] ) ) {
+				ob_start();
+				call_user_func_array( $control['callback'], $control['params'] );
+				ob_end_clean();
+				break;
+			}
+		}
 
 		// Clean up any input vars that were manually added
 		foreach ( $added_input_vars as $key ) {
@@ -1473,7 +1460,7 @@ final class WP_Customize_Widgets {
 
 		// Obtain the widget instance.
 		$option = $this->get_captured_option( $option_name );
-		if ( $parsed_id['number'] && empty( $option[ $parsed_id['number'] ] ) ) {
+		if ( $is_widget_delete ) {
 			$instance = array( 'multidimensional_delete' => true );
 		} else if ( null !== $parsed_id['number'] ) {
 			$instance = $option[ $parsed_id['number'] ];
@@ -1492,7 +1479,7 @@ final class WP_Customize_Widgets {
 		// Obtain the widget control with the updated instance in place.
 		ob_start();
 		$form = $wp_registered_widget_controls[ $widget_id ];
-		if ( $form && empty ( $_POST[ 'delete_widget' ] ) ) {
+		if ( $form && false === $is_widget_delete ) {
 			call_user_func_array( $form['callback'], $form['params'] );
 		}
 		$form = ob_get_clean();

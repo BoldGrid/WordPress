@@ -1301,7 +1301,7 @@
 			params.nonce = api.settings.nonce['update-widget'];
 			params.theme = api.settings.theme.stylesheet;
 			params.customized = wp.customize.previewer.query().customized;
-			params.delete_widget = ( false === self.setting() );
+			params.delete_widget = ( false === self.setting() ) ? 1 : 0;
 
 			data = $.param( params );
 			$inputs = this._getInputs( $widgetContent );
