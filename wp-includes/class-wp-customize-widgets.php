@@ -724,6 +724,7 @@ final class WP_Customize_Widgets {
 				'reorderModeOff'   => __( 'Reorder mode closed' ),
 				'reorderLabelOn'   => esc_attr__( 'Reorder widgets' ),
 				'reorderLabelOff'  => esc_attr__( 'Close reorder mode' ),
+				'itemDeleted'       => __( 'Widget deleted' ),
 			),
 			'tpl' => array(
 				'widgetReorderNav' => $widget_reorder_nav_tpl,

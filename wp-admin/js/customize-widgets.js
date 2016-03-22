@@ -403,6 +403,8 @@
 					self.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' )
 						.removeClass( 'has-inactive-widgets expanded' );
 				}
+				
+				wp.a11y.speak( l10n.itemDeleted );
 			};
 
 			$currentTarget.closest( '.saved-widget' ).slideUp( 'fast' , deleteCallback );
@@ -647,15 +649,11 @@
 			 * form content will be embedded once the control itself is expanded,
 			 * and at this point the widget-added event will be triggered.
 			 */
-			console.log(" ready ", control.id, control.section() )
-		//	console.log( control.section() );
-			
 			if ( ! control.section() ) {
 				control.embedWidgetControl();
 			} else {
 				api.section( control.section(), function( section ) {
 					var onExpanded = function( isExpanded ) {
-						console.log('doing something')
 						if ( isExpanded ) {
 							control.embedWidgetControl();
 							section.expanded.unbind( onExpanded );
@@ -682,7 +680,6 @@
 				return;
 			}
 			
-			console.log("runnnig settup", control.id)
 			control.widgetControlEmbedded = true;
 
 			widgetControl = $( control.params.widget_control );
@@ -730,7 +727,7 @@
 		 */
 		_setupModel: function() {
 			var self = this, rememberSavedWidgetId;
-//console.log('control Setting Changed')
+
 			// Remember saved widgets so we know which to trash (move to inactive widgets sidebar)
 			rememberSavedWidgetId = function() {
 				api.Widgets.savedWidgetIds[self.params.widget_id] = true;
@@ -1182,6 +1179,9 @@
 					inactiveWidgetSetting.set( [] ).set( _( inactiveWidgets ).unique() );
 
 					$adjacentFocusTarget.focus(); // keyboard accessibility
+					
+					// Remove display none in case its added again.
+					self.container.show();
 				} );
 			} );
 
@@ -1308,7 +1308,7 @@
 		updateWidget: function( args ) {
 			var self = this, instanceOverride, completeCallback, $widgetRoot, $widgetContent,
 				updateNumber, params, data, $inputs, processing, jqxhr, isChanged;
-console.log("Updatie Widget")
+
 			// The updateWidget logic requires that the form fields to be fully present.
 			self.embedWidgetContent();
 
@@ -1564,7 +1564,7 @@ console.log("Updatie Widget")
 			if ( expanded ) {
 				self.embedWidgetContent();
 			}
-console.log("On expanded")
+
 			// If the expanded state is unchanged only manipulate container expanded states
 			if ( args.unchanged ) {
 				if ( expanded ) {
@@ -1580,7 +1580,6 @@ console.log("On expanded")
 
 			if ( expanded ) {
 
-//				console.log( self.section(), api.section( self.section() ) );
 				if ( self.section() && api.section( self.section() ) ) {
 					self.expandControlSection();
 				}
@@ -1935,20 +1934,9 @@ console.log("On expanded")
 				priority = 0;
 				_( widgetFormControls ).each( function ( control ) {
 					control.priority( priority );
-
-					if ( control.section() ) {
-						control.section( self.section() );
-						//control.ready();
-					} else {
-						control.section( self.section() );
-					}
-					
-//					console.log( control )
-					console.log("addting", control.id, self.section() )
+					control.section( self.section() );
 					priority += 1;
 				});
-				
-				console.log( api.section( self.section() ) )
 				
 				self.priority( priority ); // Make sure sidebar control remains at end
 
@@ -1962,7 +1950,6 @@ console.log("On expanded")
 
 				// Cleanup after widget removal
 				_( removedWidgetIds ).each( function( removedWidgetId ) {
-
 					// Using setTimeout so that when moving a widget to another sidebar, the other sidebars_widgets settings get a chance to update
 					setTimeout( function() {
 						var removedControl, wasDraggedToAnotherSidebar, inactiveWidgets, removedIdBase,
@@ -1982,24 +1969,10 @@ console.log("On expanded")
 							}
 						} );
 
-						console.log( 'isPresentInAnotherSidebar' )
-						console.log( isPresentInAnotherSidebar )
-						console.log( removedWidgetId )
 						// If the widget is present in another sidebar, abort!
 						if ( isPresentInAnotherSidebar ) {
 							return;
 						}
-
-						//removedControl = api.Widgets.getWidgetFormControlForWidget( removedWidgetId );
-
-						// Detect if widget control was dragged to another sidebar
-						//wasDraggedToAnotherSidebar = removedControl && $.contains( document, removedControl.container[0] ) && ! $.contains( self.$sectionContent[0], removedControl.container[0] );
-
-						// Delete any widget form controls for removed widgets
-						//if ( removedControl && ! wasDraggedToAnotherSidebar ) {
-						//	api.control.remove( removedControl.id );
-							//removedControl.container.remove();
-						//}
 
 						// Move widget to inactive widgets sidebar (move it to trash) if has been previously saved
 						// This prevents the inactive widgets sidebar from overflowing with throwaway widgets
@@ -2215,12 +2188,10 @@ console.log("On expanded")
 				settingId, isExistingWidget, widgetFormControl, sidebarWidgets, settingArgs, setting;
 
 			if ( ! widget ) {
-				console.log( "Widget");
 				return false;
 			}
 
 			if ( widgetNumber && ! widget.get( 'is_multi' ) ) {
-				console.log( "NNot multi");
 				return false;
 			}
 
@@ -2275,26 +2246,30 @@ console.log("On expanded")
 				setting.set( {} ); // mark dirty, changing from '' to {}
 			}
 
-			controlConstructor = api.controlConstructor[controlType];
-			widgetFormControl = new controlConstructor( settingId, {
-				params: {
-					settings: {
-						'default': settingId
+			widgetFormControl = api.control( settingId );
+			if ( ! widgetFormControl ) {
+			
+				controlConstructor = api.controlConstructor[controlType];
+				widgetFormControl = new controlConstructor( settingId, {
+					params: {
+						settings: {
+							'default': settingId
+						},
+						content: controlContainer,
+						sidebar_id: self.params.sidebar_id,
+						widget_id: widgetId,
+						widget_id_base: widget.get( 'id_base' ),
+						type: controlType,
+						is_new: ! isExistingWidget,
+						width: widget.get( 'width' ),
+						height: widget.get( 'height' ),
+						is_wide: widget.get( 'is_wide' ),
+						active: true
 					},
-					content: controlContainer,
-					sidebar_id: self.params.sidebar_id,
-					widget_id: widgetId,
-					widget_id_base: widget.get( 'id_base' ),
-					type: controlType,
-					is_new: ! isExistingWidget,
-					width: widget.get( 'width' ),
-					height: widget.get( 'height' ),
-					is_wide: widget.get( 'is_wide' ),
-					active: true
-				},
-				previewer: self.setting.previewer
-			} );
-			api.control.add( settingId, widgetFormControl );
+					previewer: self.setting.previewer
+				} );
+				api.control.add( settingId, widgetFormControl );
+			}
 
 			// Make sure widget is removed from the other sidebars
 			api.each( function( otherSetting ) {
@@ -2320,14 +2295,6 @@ console.log("On expanded")
 			if ( -1 === _.indexOf( sidebarWidgets, widgetId ) ) {
 				sidebarWidgets.push( widgetId );
 				this.setting( sidebarWidgets );
-			}
-			console.log( widgetFormControl );
-			console.log( widgetFormControl.section, widgetFormControl.section() );
-			
-			if ( ! widgetFormControl.section() ) { 
-				//widgetFormControl.section( 'sidebar-widgets-wp_inactive_widgets' );
-			//	widgetFormControl.section( self.section() );
-						//console.log( self.section) 
 			}
 
 			controlContainer.slideDown( function() {
