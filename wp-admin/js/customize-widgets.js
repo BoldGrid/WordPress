@@ -295,12 +295,18 @@
 				.removeClass( 'inactive-widget' );
 
 			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
-				var $savedWidget, parsedWidgetId, widgetSetting, title, $inWidgetTitle, availableWidget;
+				var $savedWidget  = self.$el.find( '#saved-widget-' + widgetId ),
+					parsedWidgetId = parseWidgetId( widgetId ),
+					widgetControlId = 'widget_' + parsedWidgetId.id_base + '[' + parsedWidgetId.number + ']',
+					widgetControl =  api.control( widgetControlId ),
+					widgetSetting =  api( widgetControlId ),
+					title = ( widgetSetting ) ? widgetSetting().title : null,
+					$inWidgetTitle,
+					availableWidget;
 
-				$savedWidget   = self.$el.find( '#saved-widget-' + widgetId );
-				parsedWidgetId = parseWidgetId( widgetId );
-				widgetSetting  = api( 'widget_' + parsedWidgetId.id_base + '[' + parsedWidgetId.number + ']' );
-				title          = ( widgetSetting ) ? widgetSetting().title : null;
+				if ( ! widgetControl ) {
+					return;
+				}
 
 				// If inactive widget HTML does not exist, create it. 
 				if ( 0 === $savedWidget.length ) {
@@ -373,18 +379,18 @@
 				settingId = widgetIdToSettingId( widgetId ),
 				control = api.Widgets.getWidgetFormControlForWidget( widgetId ),
 				deleteCallback,
-				otherSidebarWidgets,
+				inactiveSidebarWidgets,
 				inactiveWidgets,
 				i;
 
 			// Remove from sidebar.
 			inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' );
 
-			otherSidebarWidgets = inactiveWidgets().slice();
-			i = _.indexOf( otherSidebarWidgets, widgetId );
+			inactiveSidebarWidgets = inactiveWidgets().slice();
+			i = _.indexOf( inactiveSidebarWidgets, widgetId );
 			if ( -1 !== i ) {
-				otherSidebarWidgets.splice( i, 1 );
-				inactiveWidgets( otherSidebarWidgets );
+				inactiveSidebarWidgets.splice( i, 1 );
+				inactiveWidgets( inactiveSidebarWidgets );
 			}
 
 			// Embed control to allow unembedded controls to trigger update calls. 
@@ -397,6 +403,8 @@
 				var $remainingWidgets;
 
 				$( this ).remove();
+				api.control.remove( control.id );
+				control.container.remove();
 
 				// Remove drop down if widgets no longer exist
 				$remainingWidgets = self.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
