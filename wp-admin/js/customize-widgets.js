@@ -160,7 +160,7 @@
 			'keydown' : 'keyboardAccessible'
 		},
 
-		// Cache inactive widget template.
+		// Inactive widget template to be used in available widgets.
 		inactiveWidgetTpl: null,
 
 		// Cache current selected widget
@@ -180,9 +180,9 @@
 			this.listenTo( this.collection, 'change', this.updateList );
 
 			this.updateList();
-			
+
 			this.inactiveWidgetTpl = _.template( api.Widgets.data.tpl.inactiveWidget );
-			
+
 			this._createInactiveWidgets();
 
 			// If the available widgets panel is open and the customize controls are
@@ -241,15 +241,15 @@
 				}
 			} );
 		},
-		
+
 		/**
-		 * Create the list of inactive widgets to be added to the available widgets sidebar.
+		 * Create the list of inactive widgets to be added to the available widgets sidebar onload.
 		 *
 		 * @since 4.6.0
 		 */
 		_createInactiveWidgets : function () {
 			var self = this;
-			
+
 			_( api.Widgets.data.availableWidgets ).each( function ( availableWidget )  {
 				_( availableWidget.saved_widgets ).each( function ( savedWidget )  {
 					self.addInactiveWidget( {
@@ -260,14 +260,19 @@
 				});
 			});
 		},
-		
+
+		/**
+		 * Adds a single inactive widget to the available widgets sidebar.
+		 *
+		 * @since 4.6.0
+		 */
 		addInactiveWidget : function ( templateArgs ) {
 			var $inactiveWidget = $( this.inactiveWidgetTpl( templateArgs ) );
 
 			if ( 0 === this.$el.find( '.saved-widget[data-widget-id="' + templateArgs.id + '"]' ).length ) {
 				this.$el.find( '[data-id-base="' + templateArgs.idBase + '"]' ).first().after( $inactiveWidget );
 			}
-			
+
 			return $inactiveWidget;
 		},
 
@@ -290,7 +295,7 @@
 				.removeClass( 'inactive-widget' );
 
 			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
-				var $savedWidget, parsedWidgetId, widgetSetting, title, $inWidgetTitle, availableWidget; 
+				var $savedWidget, parsedWidgetId, widgetSetting, title, $inWidgetTitle, availableWidget;
 
 				if ( widgetId ) {
 
@@ -299,16 +304,16 @@
 					widgetSetting  = api( 'widget_' + parsedWidgetId.id_base + '[' + parsedWidgetId.number + ']' );
 					title          = ( widgetSetting ) ? widgetSetting().title : null;
 
-					// If inactive widget HTML does not exist, create it. 
+					// If inactive widget HTML does not exist, create it.
 					if ( false === $savedWidget.length ) {
 						availableWidget = api.Widgets.availableWidgets.findWhere( { id_base: parsedWidgetId.id_base } );
-						$savedWidget = self.addInactiveWidget({
+						$savedWidget = self.addInactiveWidget( {
 							id: widgetId,
 							type: availableWidget.attributes.name,
 							idBase: parsedWidgetId.id_base,
-						});
+						} );
 					}
-					
+
 					$savedWidget.addClass( 'inactive-widget' );
 
 					self.$el.find( '.widget-tpl[data-id-base="' + parsedWidgetId.id_base + '"]' )
@@ -323,9 +328,8 @@
 					}
 				}
 			} );
-			
 		},
-		
+
 		/**
 		 * Show or hide the list of inactive widgets per widget id base.
 		 *
@@ -344,14 +348,14 @@
 				this.select( $widgetTpl.focus() );
 			}
 		},
-		
+
 		/**
 		 * Slides down a list of active widgets per widget type.
 		 *
 		 * @since 4.6.0
 		 */
 		_toggleInactive : function ( event ) {
-			event.stopPropagation();	
+			event.stopPropagation();
 			event.preventDefault();
 
 			var $widgetTpl = $( event.currentTarget ).closest( '.widget-tpl' );
@@ -370,12 +374,12 @@
 				widgetId = $savedWidgets.data( 'widget-id' ),
 				idBase = $savedWidgets.data( 'id-base' ),
 				settingId = widgetIdToSettingId( widgetId ),
+				control = api.Widgets.getWidgetFormControlForWidget( widgetId ),
 				deleteCallback,
 				otherSidebarWidgets,
 				inactiveWidgets,
-				control,
 				i;
-			
+
 			// Remove from sidebar.
 			inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' );
 
@@ -386,11 +390,11 @@
 				inactiveWidgets( otherSidebarWidgets );
 			}
 
-			api( settingId ).set( {} ).set( false );
-			control = api.Widgets.getWidgetFormControlForWidget( widgetId );
-			control.updateWidget( {
-				instance: control.setting()
-			} );
+			// Embed control to allow unembedded controls to trigger update calls. 
+			if ( control.widgetControlEmdedded ) {
+				control.embedWidgetControl();
+			}
+			api( settingId ).set( false );
 
 			deleteCallback = function () {
 				var $remainingWidgets;
@@ -403,7 +407,7 @@
 					self.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' )
 						.removeClass( 'has-inactive-widgets expanded' );
 				}
-				
+
 				wp.a11y.speak( l10n.itemDeleted );
 			};
 
@@ -434,7 +438,7 @@
 
 		// Adds a selected widget to the sidebar
 		submit: function( widgetTpl ) {
-			var widgetId, widget, widgetFormControl, isSavedWidget, $selectedWidget, addWidgetId;
+			var widgetId, widget, widgetFormControl, isSavedWidget, addWidgetId;
 
 			if ( ! widgetTpl ) {
 				widgetTpl = this.selected;
@@ -446,16 +450,15 @@
 
 			this.select( widgetTpl );
 
-			$selectedWidget = $( this.selected );
 			widgetId = widgetTpl.data( 'widget-id' );
 			isSavedWidget = widgetTpl.data( 'is-saved-widget' );
-			
+
 			widget = this.collection.findWhere( { id: widgetId } );
 			if ( ( ! widget && ! isSavedWidget ) || widgetTpl.hasClass( 'saved-widget' ) ) {
 				return;
 			}
 
-			addWidgetId = ( isSavedWidget ) ? widgetId : widget.get( 'id_base' );  
+			addWidgetId = ( isSavedWidget ) ? widgetId : widget.get( 'id_base' );
 			widgetFormControl = this.currentSidebarControl.addWidget( addWidgetId );
 
 			if ( widgetFormControl ) {
@@ -468,9 +471,10 @@
 		// Opens the panel
 		open: function( sidebarControl ) {
 			this.currentSidebarControl = sidebarControl;
-			
+
+			// Create inactive widget controls that were moved to the inactive sidebar.
 			this.updateVisibleSavedWidgets();
-			
+
 			// Wide widget controls appear over the preview, and so they need to be collapsed when the panel opens
 			_( this.currentSidebarControl.getWidgetFormControls() ).each( function( control ) {
 				if ( control.params.is_wide ) {
@@ -547,14 +551,14 @@
 
 				return;
 			}
-			
+
 			// Toggle display when the user presses left or right on widget template with inactive widgets.
 			if ( isLeft || isRight ) {
 				if ( this.selected && (this.selected.hasClass( 'has-inactive-widgets' ) || this.selected.hasClass( 'saved-widget' ) ) ) {
 					var idBase = this.selected.data('id-base');
 					this.toggleInactive( idBase );
 				}
-				
+
 				return;
 			}
 
@@ -679,7 +683,7 @@
 			if ( control.widgetControlEmbedded ) {
 				return;
 			}
-			
+
 			control.widgetControlEmbedded = true;
 
 			widgetControl = $( control.params.widget_control );
@@ -983,7 +987,7 @@
 			/**
 			 * Move widget to another sidebar
 			 */
-			this.container.find( '.move-widget-btn' ).click( function(e) {
+			this.container.find( '.move-widget-btn' ).click( function() {
 				self.getSidebarWidgetsControl().toggleReordering( false );
 
 				var oldSidebarId = self.params.sidebar_id,
@@ -1108,6 +1112,7 @@
 
 		/**
 		 * Set up event handlers for widget move.
+		 * 
 		 * @since 4.6.0
 		 */
 		_setupMoveUI: function() {
@@ -1118,9 +1123,9 @@
 
 			$moveBtn.on( 'click', function ( e ) {
 				e.preventDefault();
-				
+
 				$reorderToggle = $( this ).closest( '.ui-sortable' ).find( '.reorder-toggle' );
-				
+
 				$reorderToggle.trigger( 'click' );
 				self.openWidgetMoveArea();
 			} );
@@ -1179,7 +1184,7 @@
 					inactiveWidgetSetting.set( [] ).set( _( inactiveWidgets ).unique() );
 
 					$adjacentFocusTarget.focus(); // keyboard accessibility
-					
+
 					// Remove display none in case its added again.
 					self.container.show();
 				} );
@@ -1924,6 +1929,7 @@
 
 					return widgetFormControl;
 				} );
+
 				// Sort widget controls to their new positions
 				widgetFormControls.sort( function( a, b ) {
 					var aIndex = _.indexOf( newWidgetIds, a.params.widget_id ),
@@ -1937,7 +1943,6 @@
 					control.section( self.section() );
 					priority += 1;
 				});
-				
 				self.priority( priority ); // Make sure sidebar control remains at end
 
 				// Re-sort widget form controls (including widgets form other sidebars newly moved here)
@@ -1950,6 +1955,7 @@
 
 				// Cleanup after widget removal
 				_( removedWidgetIds ).each( function( removedWidgetId ) {
+
 					// Using setTimeout so that when moving a widget to another sidebar, the other sidebars_widgets settings get a chance to update
 					setTimeout( function() {
 						var removedControl, wasDraggedToAnotherSidebar, inactiveWidgets, removedIdBase,
@@ -2080,7 +2086,6 @@
 		 */
 		_applyCardinalOrderClassNames: function() {
 			var widgetControls = [];
-			return widgetControls;
 			_.each( this.setting(), function ( widgetId ) {
 				var widgetControl = api.Widgets.getWidgetFormControlForWidget( widgetId );
 				if ( widgetControl ) {
@@ -2248,7 +2253,7 @@
 
 			widgetFormControl = api.control( settingId );
 			if ( ! widgetFormControl ) {
-			
+
 				controlConstructor = api.controlConstructor[controlType];
 				widgetFormControl = new controlConstructor( settingId, {
 					params: {

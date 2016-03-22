@@ -350,7 +350,7 @@ body.adding-widget #customize-preview {
 #available-widgets .widget-tpl.expanded .widget-title-action,
 #available-widgets .has-inactive-widgets .widget-title-action:hover {
 	border-left: 1px #e4e4e4 solid;
-	background-color: white;	
+	background-color: #FFFFFF;
 }
 
 #available-widgets .has-inactive-widgets .widget-title-action:hover .widget-action {

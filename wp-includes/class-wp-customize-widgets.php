@@ -445,7 +445,7 @@ final class WP_Customize_Widgets {
 
 				if ( $is_inactive_widgets ) {
 					$title = 'Inactive Widgets';
-					$description = 'Inactive Widgets';
+					$description = $title;
 				} else {
 					$title = $wp_registered_sidebars[ $sidebar_id ]['name'];
 					$description = $wp_registered_sidebars[ $sidebar_id ]['description'];
@@ -1410,15 +1410,15 @@ final class WP_Customize_Widgets {
 	 * @since 3.9.0
 	 * @access public
 	 *
-	 * @global array $wp_registered_widget_controls
 	 * @global array $wp_registered_widget_updates
+	 * @global array $wp_registered_widget_controls
 	 *
 	 * @param  string $widget_id Widget ID.
 	 * @return WP_Error|array Array containing the updated widget information.
 	 *                        A WP_Error object, otherwise.
 	 */
 	public function call_widget_update( $widget_id ) {
-		global $wp_registered_widget_controls, $wp_registered_widget_updates;
+		global $wp_registered_widget_updates, $wp_registered_widget_controls;
 
 		$setting_id = $this->get_setting_id( $widget_id );
 		/*
@@ -1443,7 +1443,6 @@ final class WP_Customize_Widgets {
 		 */
 		$added_input_vars = array();
 		if ( ! empty( $_POST['sanitized_widget_setting'] ) ) {
-
 			$sanitized_widget_setting = json_decode( $this->get_post_value( 'sanitized_widget_setting' ), true );
 			if ( false === $sanitized_widget_setting ) {
 				$this->stop_capturing_option_updates();
@@ -1455,8 +1454,8 @@ final class WP_Customize_Widgets {
 				$this->stop_capturing_option_updates();
 				return new WP_Error( 'widget_setting_unsanitized' );
 			}
-			if ( ! is_null( $parsed_id['number'] ) ) {
 
+			if ( ! is_null( $parsed_id['number'] ) ) {
 				$value = array();
 				$value[$parsed_id['number']] = $instance;
 				$key = 'widget-' . $parsed_id['id_base'];
