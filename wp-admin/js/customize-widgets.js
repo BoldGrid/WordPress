@@ -297,35 +297,32 @@
 			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
 				var $savedWidget, parsedWidgetId, widgetSetting, title, $inWidgetTitle, availableWidget;
 
-				if ( widgetId ) {
+				$savedWidget   = self.$el.find( '#saved-widget-' + widgetId );
+				parsedWidgetId = parseWidgetId( widgetId );
+				widgetSetting  = api( 'widget_' + parsedWidgetId.id_base + '[' + parsedWidgetId.number + ']' );
+				title          = ( widgetSetting ) ? widgetSetting().title : null;
 
-					$savedWidget   = self.$el.find( '#saved-widget-' + widgetId );
-					parsedWidgetId = parseWidgetId( widgetId );
-					widgetSetting  = api( 'widget_' + parsedWidgetId.id_base + '[' + parsedWidgetId.number + ']' );
-					title          = ( widgetSetting ) ? widgetSetting().title : null;
+				// If inactive widget HTML does not exist, create it. 
+				if ( 0 === $savedWidget.length ) {
+					availableWidget = api.Widgets.availableWidgets.findWhere( { id_base: parsedWidgetId.id_base } );
+					$savedWidget = self.addInactiveWidget({
+						id: widgetId,
+						type: availableWidget.attributes.name,
+						idBase: parsedWidgetId.id_base,
+					});
+				}
+				
+				$savedWidget.addClass( 'inactive-widget' );
 
-					// If inactive widget HTML does not exist, create it.
-					if ( false === $savedWidget.length ) {
-						availableWidget = api.Widgets.availableWidgets.findWhere( { id_base: parsedWidgetId.id_base } );
-						$savedWidget = self.addInactiveWidget( {
-							id: widgetId,
-							type: availableWidget.attributes.name,
-							idBase: parsedWidgetId.id_base,
-						} );
-					}
+				self.$el.find( '.widget-tpl[data-id-base="' + parsedWidgetId.id_base + '"]' )
+					.not( '.saved-widget' )
+					.addClass( 'has-inactive-widgets' );
 
-					$savedWidget.addClass( 'inactive-widget' );
-
-					self.$el.find( '.widget-tpl[data-id-base="' + parsedWidgetId.id_base + '"]' )
-						.not( '.saved-widget' )
-						.addClass( 'has-inactive-widgets' );
-
-					$inWidgetTitle = $savedWidget.find( '.in-widget-title' );
-					if ( title ) {
-						$inWidgetTitle.text( ': ' + title );
-					} else {
-						$inWidgetTitle.text( '' );
-					}
+				$inWidgetTitle = $savedWidget.find( '.in-widget-title' );
+				if ( title ) {
+					$inWidgetTitle.text( ': ' + title );
+				} else {
+					$inWidgetTitle.text( '' );
 				}
 			} );
 		},
@@ -391,7 +388,7 @@
 			}
 
 			// Embed control to allow unembedded controls to trigger update calls. 
-			if ( control.widgetControlEmdedded ) {
+			if ( ! control.widgetControlEmdedded ) {
 				control.embedWidgetControl();
 			}
 			api( settingId ).set( false );
