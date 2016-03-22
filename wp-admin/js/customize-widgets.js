@@ -154,11 +154,14 @@
 			'focus .widget-tpl' : 'focus',
 			'click .widget-tpl' : '_submit',
 			'click .add-saved-widget' : '_submit',
-			'click .delete-widget-permanently' : '_setupDeleteUI',
+			'click .delete-widget-permanently' : '_delete',
 			'click .widget-tpl .widget-title-action' : '_toggleInactive',
 			'keypress .widget-tpl' : '_submit',
 			'keydown' : 'keyboardAccessible'
 		},
+
+		// Cache inactive widget template.
+		inactiveWidgetTpl: null,
 
 		// Cache current selected widget
 		selected: null,
@@ -177,6 +180,10 @@
 			this.listenTo( this.collection, 'change', this.updateList );
 
 			this.updateList();
+			
+			this.inactiveWidgetTpl = _.template( api.Widgets.data.tpl.inactiveWidget );
+			
+			this._createInactiveWidgets();
 
 			// If the available widgets panel is open and the customize controls are
 			// interacted with (i.e. available widgets panel is blurred) then close the
@@ -234,6 +241,35 @@
 				}
 			} );
 		},
+		
+		/**
+		 * Create the list of inactive widgets to be added to the available widgets sidebar.
+		 *
+		 * @since 4.6.0
+		 */
+		_createInactiveWidgets : function () {
+			var self = this;
+			
+			_( api.Widgets.data.availableWidgets ).each( function ( availableWidget )  {
+				_( availableWidget.saved_widgets ).each( function ( savedWidget )  {
+					self.addInactiveWidget( {
+						id: savedWidget.id,
+						type: savedWidget.type,
+						idBase: availableWidget.id_base,
+					} );
+				});
+			});
+		},
+		
+		addInactiveWidget : function ( templateArgs ) {
+			var $inactiveWidget = $( this.inactiveWidgetTpl( templateArgs ) );
+
+			if ( 0 === this.$el.find( '.saved-widget[data-widget-id="' + templateArgs.id + '"]' ).length ) {
+				this.$el.find( '[data-id-base="' + templateArgs.idBase + '"]' ).first().after( $inactiveWidget );
+			}
+			
+			return $inactiveWidget;
+		},
 
 		/**
 		 * Show inactive widgets and hide active widgets.
@@ -254,20 +290,29 @@
 				.removeClass( 'inactive-widget' );
 
 			_( api( 'sidebars_widgets[wp_inactive_widgets]' )() ).each( function( widgetId ) {
-				var $savedWidget, baseId, parsedWidgetId, widgetSetting, title, $inWidgetTitle; 
+				var $savedWidget, parsedWidgetId, widgetSetting, title, $inWidgetTitle, availableWidget; 
 
 				if ( widgetId ) {
 
-					$savedWidget = self.$el.find( '#saved-widget-' + widgetId );
-					baseId = $savedWidget.data( 'id-base' );
+					$savedWidget   = self.$el.find( '#saved-widget-' + widgetId );
 					parsedWidgetId = parseWidgetId( widgetId );
-					widgetSetting = api( 'widget_' + baseId + '[' + parsedWidgetId.number + ']' );
-					title = ( widgetSetting ) ? widgetSetting().title : null;
+					widgetSetting  = api( 'widget_' + parsedWidgetId.id_base + '[' + parsedWidgetId.number + ']' );
+					title          = ( widgetSetting ) ? widgetSetting().title : null;
 
+					// If inactive widget HTML does not exist, create it. 
+					if ( false === $savedWidget.length ) {
+						availableWidget = api.Widgets.availableWidgets.findWhere( { id_base: parsedWidgetId.id_base } );
+						$savedWidget = self.addInactiveWidget({
+							id: widgetId,
+							type: availableWidget.attributes.name,
+							idBase: parsedWidgetId.id_base,
+						});
+					}
+					
 					$savedWidget.addClass( 'inactive-widget' );
 
-					self.$el.find( '.widget-tpl[data-id-base="' + baseId + '"]' )
-						.not('.saved-widget')
+					self.$el.find( '.widget-tpl[data-id-base="' + parsedWidgetId.id_base + '"]' )
+						.not( '.saved-widget' )
 						.addClass( 'has-inactive-widgets' );
 
 					$inWidgetTitle = $savedWidget.find( '.in-widget-title' );
@@ -286,7 +331,7 @@
 		 *
 		 * @since 4.6.0
 		 */
-		toggleInactive: function ( idBase ) {
+		toggleInactive : function ( idBase ) {
 			var $widgetTpl = this.$el.find( '.has-inactive-widgets[data-id-base="' + idBase + '"]' ),
 				$inactiveWidgets = this.$el.find( '.saved-widget[data-id-base="' + idBase + '"].inactive-widget' );
 
@@ -318,7 +363,7 @@
 		 *
 		 * @since 4.6.0
 		 */
-		_setupDeleteUI : function ( event ) {
+		_delete : function ( event ) {
 			var self = this,
 				$currentTarget = $( event.currentTarget ),
 				$savedWidgets = $currentTarget.closest( '.saved-widget' ),
@@ -334,7 +379,7 @@
 			// Remove from sidebar.
 			inactiveWidgets = api( 'sidebars_widgets[wp_inactive_widgets]' );
 
-			otherSidebarWidgets = inactiveWidgets().slice(),
+			otherSidebarWidgets = inactiveWidgets().slice();
 			i = _.indexOf( otherSidebarWidgets, widgetId );
 			if ( -1 !== i ) {
 				otherSidebarWidgets.splice( i, 1 );
@@ -387,7 +432,7 @@
 
 		// Adds a selected widget to the sidebar
 		submit: function( widgetTpl ) {
-			var widgetId, widget, widgetFormControl, isSavedWidget, $selectedWidget;
+			var widgetId, widget, widgetFormControl, isSavedWidget, $selectedWidget, addWidgetId;
 
 			if ( ! widgetTpl ) {
 				widgetTpl = this.selected;
@@ -400,23 +445,16 @@
 			this.select( widgetTpl );
 
 			$selectedWidget = $( this.selected );
-			widgetId = $selectedWidget.data( 'widget-id' );
-			isSavedWidget = $selectedWidget.data( 'is-saved-widget' );
+			widgetId = widgetTpl.data( 'widget-id' );
+			isSavedWidget = widgetTpl.data( 'is-saved-widget' );
 			
 			widget = this.collection.findWhere( { id: widgetId } );
-			if ( ! widget && ! isSavedWidget ) {
+			if ( ( ! widget && ! isSavedWidget ) || widgetTpl.hasClass( 'saved-widget' ) ) {
 				return;
 			}
 
-			if ( ( isSavedWidget && !api.Widgets.data.registeredWidgets[ widgetId ] ) || $selectedWidget.hasClass( 'saved-widget' ) ) {
-				return;
-			}
-
-			if ( isSavedWidget ) {
-				widgetFormControl = this.currentSidebarControl.addWidget( widgetId );
-			} else {
-				widgetFormControl = this.currentSidebarControl.addWidget( widget.get( 'id_base' ) );
-			}
+			addWidgetId = ( isSavedWidget ) ? widgetId : widget.get( 'id_base' );  
+			widgetFormControl = this.currentSidebarControl.addWidget( addWidgetId );
 
 			if ( widgetFormControl ) {
 				widgetFormControl.focus();
@@ -609,11 +647,15 @@
 			 * form content will be embedded once the control itself is expanded,
 			 * and at this point the widget-added event will be triggered.
 			 */
+			console.log(" ready ", control.id, control.section() )
+		//	console.log( control.section() );
+			
 			if ( ! control.section() ) {
 				control.embedWidgetControl();
 			} else {
 				api.section( control.section(), function( section ) {
 					var onExpanded = function( isExpanded ) {
+						console.log('doing something')
 						if ( isExpanded ) {
 							control.embedWidgetControl();
 							section.expanded.unbind( onExpanded );
@@ -639,6 +681,8 @@
 			if ( control.widgetControlEmbedded ) {
 				return;
 			}
+			
+			console.log("runnnig settup", control.id)
 			control.widgetControlEmbedded = true;
 
 			widgetControl = $( control.params.widget_control );
@@ -686,7 +730,7 @@
 		 */
 		_setupModel: function() {
 			var self = this, rememberSavedWidgetId;
-
+//console.log('control Setting Changed')
 			// Remember saved widgets so we know which to trash (move to inactive widgets sidebar)
 			rememberSavedWidgetId = function() {
 				api.Widgets.savedWidgetIds[self.params.widget_id] = true;
@@ -942,7 +986,7 @@
 			/**
 			 * Move widget to another sidebar
 			 */
-			this.container.find( '.move-widget-btn' ).click( function() {
+			this.container.find( '.move-widget-btn' ).click( function(e) {
 				self.getSidebarWidgetsControl().toggleReordering( false );
 
 				var oldSidebarId = self.params.sidebar_id,
@@ -1116,7 +1160,7 @@
 
 				self.container.slideUp( function() {
 					var sidebarsWidgetsControl = api.Widgets.getSidebarWidgetControlContainingWidget( self.params.widget_id ),
-						sidebarWidgetIds, i, inactiveWidgets, inactiveWidgets;
+						sidebarWidgetIds, i, inactiveWidgets, inactiveWidgetSetting;
 
 					if ( ! sidebarsWidgetsControl ) {
 						return;
@@ -1132,8 +1176,8 @@
 					sidebarsWidgetsControl.setting( sidebarWidgetIds );
 
 					// Add widget to inactive widgets.
-					var inactiveWidgetSetting = api( 'sidebars_widgets[wp_inactive_widgets]' );
-					var inactiveWidgets = inactiveWidgetSetting();
+					inactiveWidgetSetting = api( 'sidebars_widgets[wp_inactive_widgets]' );
+					inactiveWidgets = inactiveWidgetSetting();
 					inactiveWidgets.push( self.params.widget_id );
 					inactiveWidgetSetting.set( [] ).set( _( inactiveWidgets ).unique() );
 
@@ -1264,7 +1308,7 @@
 		updateWidget: function( args ) {
 			var self = this, instanceOverride, completeCallback, $widgetRoot, $widgetContent,
 				updateNumber, params, data, $inputs, processing, jqxhr, isChanged;
-
+console.log("Updatie Widget")
 			// The updateWidget logic requires that the form fields to be fully present.
 			self.embedWidgetContent();
 
@@ -1399,7 +1443,7 @@
 					 * preview finishing loading.
 					 */
 					isChanged = ! isLiveUpdateAborted && ! _( self.setting() ).isEqual( r.data.instance );
-					if ( isChanged || false === args.instance ) {
+					if ( isChanged || false === self.setting() ) {
 						self.isWidgetUpdating = true; // suppress triggering another updateWidget
 						self.setting( r.data.instance );
 						self.isWidgetUpdating = false;
@@ -1516,12 +1560,11 @@
 		 */
 		onChangeExpanded: function ( expanded, args ) {
 			var self = this, $widget, $inside, complete, prevComplete;
-
 			self.embedWidgetControl(); // Make sure the outer form is embedded so that the expanded state can be set in the UI.
 			if ( expanded ) {
 				self.embedWidgetContent();
 			}
-
+console.log("On expanded")
 			// If the expanded state is unchanged only manipulate container expanded states
 			if ( args.unchanged ) {
 				if ( expanded ) {
@@ -1537,6 +1580,7 @@
 
 			if ( expanded ) {
 
+//				console.log( self.section(), api.section( self.section() ) );
 				if ( self.section() && api.section( self.section() ) ) {
 					self.expandControlSection();
 				}
@@ -1881,7 +1925,6 @@
 
 					return widgetFormControl;
 				} );
-
 				// Sort widget controls to their new positions
 				widgetFormControls.sort( function( a, b ) {
 					var aIndex = _.indexOf( newWidgetIds, a.params.widget_id ),
@@ -1892,9 +1935,21 @@
 				priority = 0;
 				_( widgetFormControls ).each( function ( control ) {
 					control.priority( priority );
-					control.section( self.section() );
+
+					if ( control.section() ) {
+						control.section( self.section() );
+						//control.ready();
+					} else {
+						control.section( self.section() );
+					}
+					
+//					console.log( control )
+					console.log("addting", control.id, self.section() )
 					priority += 1;
 				});
+				
+				console.log( api.section( self.section() ) )
+				
 				self.priority( priority ); // Make sure sidebar control remains at end
 
 				// Re-sort widget form controls (including widgets form other sidebars newly moved here)
@@ -1927,21 +1982,24 @@
 							}
 						} );
 
+						console.log( 'isPresentInAnotherSidebar' )
+						console.log( isPresentInAnotherSidebar )
+						console.log( removedWidgetId )
 						// If the widget is present in another sidebar, abort!
 						if ( isPresentInAnotherSidebar ) {
 							return;
 						}
 
-						removedControl = api.Widgets.getWidgetFormControlForWidget( removedWidgetId );
+						//removedControl = api.Widgets.getWidgetFormControlForWidget( removedWidgetId );
 
 						// Detect if widget control was dragged to another sidebar
-						wasDraggedToAnotherSidebar = removedControl && $.contains( document, removedControl.container[0] ) && ! $.contains( self.$sectionContent[0], removedControl.container[0] );
+						//wasDraggedToAnotherSidebar = removedControl && $.contains( document, removedControl.container[0] ) && ! $.contains( self.$sectionContent[0], removedControl.container[0] );
 
 						// Delete any widget form controls for removed widgets
-						if ( removedControl && ! wasDraggedToAnotherSidebar ) {
-							api.control.remove( removedControl.id );
-							removedControl.container.remove();
-						}
+						//if ( removedControl && ! wasDraggedToAnotherSidebar ) {
+						//	api.control.remove( removedControl.id );
+							//removedControl.container.remove();
+						//}
 
 						// Move widget to inactive widgets sidebar (move it to trash) if has been previously saved
 						// This prevents the inactive widgets sidebar from overflowing with throwaway widgets
@@ -2049,6 +2107,7 @@
 		 */
 		_applyCardinalOrderClassNames: function() {
 			var widgetControls = [];
+			return widgetControls;
 			_.each( this.setting(), function ( widgetId ) {
 				var widgetControl = api.Widgets.getWidgetFormControlForWidget( widgetId );
 				if ( widgetControl ) {
@@ -2156,10 +2215,12 @@
 				settingId, isExistingWidget, widgetFormControl, sidebarWidgets, settingArgs, setting;
 
 			if ( ! widget ) {
+				console.log( "Widget");
 				return false;
 			}
 
 			if ( widgetNumber && ! widget.get( 'is_multi' ) ) {
+				console.log( "NNot multi");
 				return false;
 			}
 
@@ -2259,6 +2320,14 @@
 			if ( -1 === _.indexOf( sidebarWidgets, widgetId ) ) {
 				sidebarWidgets.push( widgetId );
 				this.setting( sidebarWidgets );
+			}
+			console.log( widgetFormControl );
+			console.log( widgetFormControl.section, widgetFormControl.section() );
+			
+			if ( ! widgetFormControl.section() ) { 
+				//widgetFormControl.section( 'sidebar-widgets-wp_inactive_widgets' );
+			//	widgetFormControl.section( self.section() );
+						//console.log( self.section) 
 			}
 
 			controlContainer.slideDown( function() {

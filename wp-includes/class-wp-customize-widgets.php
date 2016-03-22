@@ -675,6 +675,21 @@ final class WP_Customize_Widgets {
 			</div>'
 		);
 
+		$inactive_widget_tpl = str_replace(
+			array( '{delete}', '{add}' ),
+			array(
+				__( 'Delete' ),
+				__( 'Add' )
+			),
+			'<div id="saved-widget-<%- id %>" data-id-base="<%- idBase %>" data-widget-id="<%- id %>" class="widget-title saved-widget widget-tpl" tabindex="0">
+				<h3><%- type %><span class="in-widget-title"></span></h3>
+				<div class="saved-widget-controls">
+					<a href="#" class="add-saved-widget" data-is-saved-widget="1" data-widget-id="<%- id %>"
+					>{add}</a> &#124; <a href="#" class="delete-widget-permanently">{delete}</a>
+				</div>
+			</div>'
+		);
+
 		$inactive_sidebar = array(
 			'inactive-sidebar' => array(
 				'name' => __( 'Save For Later' ),
@@ -713,6 +728,7 @@ final class WP_Customize_Widgets {
 			'tpl' => array(
 				'widgetReorderNav' => $widget_reorder_nav_tpl,
 				'moveWidgetArea'   => $move_widget_area_tpl,
+				'inactiveWidget'   => $inactive_widget_tpl,
 			),
 			'selectiveRefresh'     => isset( $this->manager->selective_refresh ),
 		);
@@ -759,16 +775,6 @@ final class WP_Customize_Widgets {
 				<div id="widget-tpl-<?php echo esc_attr( $available_widget['id'] ) ?>" data-id-base="<?php echo esc_attr( $available_widget['id_base'] ) ?>" data-widget-id="<?php echo esc_attr( $available_widget['id'] ) ?>" class="widget-tpl <?php echo esc_attr( $available_widget['id'] ) ?>" tabindex="0">
 					<?php echo $available_widget['control_tpl']; ?>
 				</div>
-				<?php foreach ( $available_widget['saved_widgets'] as $saved_widget ): ?>
-					<div id="saved-widget-<?php echo esc_attr( $saved_widget['id'] ) ?>" data-id-base="<?php echo esc_attr( $available_widget['id_base'] ) ?>" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>" class=" widget-title saved-widget widget-tpl" tabindex="0">
-						<h3><?php echo $saved_widget['type']; ?><span class="in-widget-title"></span></h3>
-						<div class="saved-widget-controls">
-							<a href='#' class="add-saved-widget" data-is-saved-widget="1" data-widget-id="<?php echo esc_attr( $saved_widget['id'] ) ?>"
-							><?php _e( 'Add' ) ?></a> &#124; <a href='#' class="delete-widget-permanently"><?php _e( 'Delete' ) ?></a>
-						</div>
-					</div>
-				<?php endforeach; ?>
-
 			<?php endforeach; ?>
 			</div><!-- #available-widgets-list -->
 		</div><!-- #available-widgets -->
