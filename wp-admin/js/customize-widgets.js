@@ -390,7 +390,7 @@
 			i = _.indexOf( inactiveSidebarWidgets, widgetId );
 			if ( -1 !== i ) {
 				inactiveSidebarWidgets.splice( i, 1 );
-				inactiveWidgets( inactiveSidebarWidgets );
+				inactiveWidgets.set( inactiveSidebarWidgets );
 			}
 
 			// Embed control to allow unembedded controls to trigger update calls. 
@@ -1987,7 +1987,7 @@
 
 						// Move widget to inactive widgets sidebar (move it to trash) if has been previously saved
 						// This prevents the inactive widgets sidebar from overflowing with throwaway widgets
-						if ( api.Widgets.savedWidgetIds[removedWidgetId] ) {
+						if ( api.Widgets.savedWidgetIds[removedWidgetId] && 'sidebars_widgets[wp_inactive_widgets]' !== self.id ) {
 							inactiveWidgets = api.value( 'sidebars_widgets[wp_inactive_widgets]' )().slice();
 							inactiveWidgets.push( removedWidgetId );
 							api.value( 'sidebars_widgets[wp_inactive_widgets]' )( _( inactiveWidgets ).unique() );
