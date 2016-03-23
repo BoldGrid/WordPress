@@ -308,7 +308,7 @@
 					return;
 				}
 
-				// If inactive widget HTML does not exist, create it. 
+				// If inactive widget HTML does not exist, create it.
 				if ( 0 === $savedWidget.length ) {
 					availableWidget = api.Widgets.availableWidgets.findWhere( { id_base: parsedWidgetId.id_base } );
 					$savedWidget = self.addInactiveWidget({
@@ -317,7 +317,7 @@
 						idBase: parsedWidgetId.id_base,
 					});
 				}
-				
+
 				$savedWidget.addClass( 'inactive-widget' );
 
 				self.$el.find( '.widget-tpl[data-id-base="' + parsedWidgetId.id_base + '"]' )
@@ -393,7 +393,7 @@
 				inactiveWidgets.set( inactiveSidebarWidgets );
 			}
 
-			// Embed control to allow unembedded controls to trigger update calls. 
+			// Embed control to allow unembedded controls to trigger update calls.
 			if ( ! control.widgetControlEmdedded ) {
 				control.embedWidgetControl();
 			}
@@ -1117,7 +1117,7 @@
 
 		/**
 		 * Set up event handlers for widget move.
-		 * 
+		 *
 		 * @since 4.6.0
 		 */
 		_setupMoveUI: function() {
