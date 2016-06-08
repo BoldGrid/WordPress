@@ -32,7 +32,7 @@ function wp_ajax_nopriv_heartbeat() {
 		$data = wp_unslash( (array) $_POST['data'] );
 
 		/**
-		 * Filter Heartbeat AJAX response in no-privilege environments.
+		 * Filters Heartbeat AJAX response in no-privilege environments.
 		 *
 		 * @since 3.6.0
 		 *
@@ -44,7 +44,7 @@ function wp_ajax_nopriv_heartbeat() {
 	}
 
 	/**
-	 * Filter Heartbeat AJAX response when no data is passed.
+	 * Filters Heartbeat AJAX response when no data is passed.
 	 *
 	 * @since 3.6.0
 	 *
@@ -132,7 +132,7 @@ function wp_ajax_ajax_tag_search() {
 	$s = trim( $s );
 
 	/**
-	 * Filter the minimum number of characters required to fire a tag search via AJAX.
+	 * Filters the minimum number of characters required to fire a tag search via AJAX.
 	 *
 	 * @since 4.0.0
 	 *
@@ -197,8 +197,10 @@ function wp_ajax_wp_compression_test() {
 			echo $out;
 			wp_die();
 		} elseif ( 'no' == $_GET['test'] ) {
+			check_ajax_referer( 'update_can_compress_scripts' );
 			update_site_option('can_compress_scripts', 0);
 		} elseif ( 'yes' == $_GET['test'] ) {
+			check_ajax_referer( 'update_can_compress_scripts' );
 			update_site_option('can_compress_scripts', 1);
 		}
 	}
@@ -949,7 +951,7 @@ function wp_ajax_get_comments( $action ) {
 	$x = new WP_Ajax_Response();
 	ob_start();
 	foreach ( $wp_list_table->items as $comment ) {
-		if ( ! current_user_can( 'edit_comment', $comment->comment_ID ) )
+		if ( ! current_user_can( 'edit_comment', $comment->comment_ID ) && 0 === $comment->comment_approved )
 			continue;
 		get_comment( $comment );
 		$wp_list_table->single_row( $comment );
@@ -2274,7 +2276,7 @@ function wp_ajax_wp_remove_post_lock() {
 		wp_die( 0 );
 
 	/**
-	 * Filter the post lock window duration.
+	 * Filters the post lock window duration.
 	 *
 	 * @since 3.3.0
 	 *
@@ -2371,7 +2373,7 @@ function wp_ajax_query_attachments() {
 		$query['post_status'] .= ',private';
 
 	/**
-	 * Filter the arguments passed to WP_Query during an AJAX
+	 * Filters the arguments passed to WP_Query during an AJAX
 	 * call for querying attachments.
 	 *
 	 * @since 3.7.0
@@ -2464,7 +2466,7 @@ function wp_ajax_save_attachment() {
 }
 
 /**
- * Ajax handler for saving backwards compatible attachment attributes.
+ * Ajax handler for saving backward compatible attachment attributes.
  *
  * @since 3.5.0
  */
@@ -2550,7 +2552,7 @@ function wp_ajax_save_attachment_order() {
  * Ajax handler for sending an attachment to the editor.
  *
  * Generates the HTML to send an attachment to the editor.
- * Backwards compatible with the media_send_to_editor filter
+ * Backward compatible with the {@see 'media_send_to_editor'} filter
  * and the chain of filters that follow.
  *
  * @since 3.5.0
@@ -2600,7 +2602,7 @@ function wp_ajax_send_attachment_to_editor() {
 		$rel = $rel ? ' rel="attachment wp-att-' . $id . '"' : ''; // Hard-coded string, $id is already sanitized
 
 		if ( ! empty( $url ) ) {
-			$html = '<a href="' . esc_url( $url ) . '"' . $rel . '">' . $html . '</a>';
+			$html = '<a href="' . esc_url( $url ) . '"' . $rel . '>' . $html . '</a>';
 		}
 	}
 
@@ -2615,7 +2617,7 @@ function wp_ajax_send_attachment_to_editor() {
  *
  * Generates the HTML to send a non-image embed link to the editor.
  *
- * Backwards compatible with the following filters:
+ * Backward compatible with the following filters:
  * - file_send_to_editor_url
  * - audio_send_to_editor_url
  * - video_send_to_editor_url
@@ -2709,7 +2711,7 @@ function wp_ajax_heartbeat() {
 
 	if ( ! empty( $data ) ) {
 		/**
-		 * Filter the Heartbeat response received.
+		 * Filters the Heartbeat response received.
 		 *
 		 * @since 3.6.0
 		 *
@@ -2721,7 +2723,7 @@ function wp_ajax_heartbeat() {
 	}
 
 	/**
-	 * Filter the Heartbeat response sent.
+	 * Filters the Heartbeat response sent.
 	 *
 	 * @since 3.6.0
 	 *
@@ -3271,7 +3273,7 @@ function wp_ajax_crop_image() {
 			$metadata = wp_generate_attachment_metadata( $attachment_id, $cropped );
 
 			/**
-			 * Filter the cropped image attachment metadata.
+			 * Filters the cropped image attachment metadata.
 			 *
 			 * @since 4.3.0
 			 *
@@ -3283,7 +3285,7 @@ function wp_ajax_crop_image() {
 			wp_update_attachment_metadata( $attachment_id, $metadata );
 
 			/**
-			 * Filter the attachment ID for a cropped image.
+			 * Filters the attachment ID for a cropped image.
 			 *
 			 * @since 4.3.0
 			 *
@@ -3314,6 +3316,8 @@ function wp_ajax_save_wporg_username() {
 	if ( ! current_user_can( 'install_themes' ) && ! current_user_can( 'install_plugins' ) ) {
 		wp_send_json_error();
 	}
+
+	check_ajax_referer( 'save_wporg_username_' . get_current_user_id() );
 
 	$username = isset( $_REQUEST['username'] ) ? wp_unslash( $_REQUEST['username'] ) : false;
 

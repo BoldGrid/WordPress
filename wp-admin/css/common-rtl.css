@@ -71,26 +71,22 @@
 
 /* 2 columns main area */
 
-#col-container,
-#col-left,
-#col-right {
-	overflow: hidden;
-	padding: 0;
-	margin: 0;
-}
-
 #col-left {
+	float: right;
 	width: 35%;
 }
 
 #col-right {
 	float: left;
-	clear: left;
 	width: 65%;
 }
 
-.col-wrap {
-	padding: 0 7px;
+#col-left .col-wrap {
+	padding: 0 0 0 6px;
+}
+
+#col-right .col-wrap {
+	padding: 0 6px 0 0;
 }
 
 /* utility classes */
@@ -212,13 +208,10 @@ body {
 	padding: 0;
 }
 
-html {
-	background: #f1f1f1;
-}
-
 body {
+	background: #f1f1f1;
 	color: #444;
-	font-family: "Open Sans", sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen-Sans", "Ubuntu", "Cantarell", "Helvetica Neue", sans-serif;
 	font-size: 13px;
 	line-height: 1.4em;
 	min-width: 600px;
@@ -1798,6 +1791,11 @@ html.wp-toolbar {
 	margin: 0.6em 0;
 }
 
+.widefat .column-comment ul {
+	list-style: initial;
+	margin-right: 2em;
+}
+
 /* Screens with postboxes */
 .postbox-container {
 	float: right;
@@ -2058,6 +2056,7 @@ h3.nav-tab-wrapper {
 	border-bottom: 1px solid #ccc;
 	margin: 0;
 	padding-top: 9px;
+	padding-bottom: 0;
 	line-height: inherit;
 }
 
@@ -2094,7 +2093,8 @@ h3.nav-tab-wrapper {
 	margin: 4px 10px 0;
 }
 
-.spinner.is-active {
+.spinner.is-active,
+.loading-content .spinner {
 	visibility: visible;
 }
 
@@ -2407,7 +2407,8 @@ div.action-links {
 	position: relative;
 	left: 0;
 	right: 0;
-	height: 36px;
+	min-height: 36px;
+	font-size: 0;
 	z-index: 1;
 	border-bottom: 1px solid #ddd;
 	background: #f3f3f3;
@@ -2415,7 +2416,7 @@ div.action-links {
 
 #plugin-information-tabs a {
 	position: relative;
-	float: right;
+	display: inline-block;
 	padding: 9px 10px;
 	margin: 0;
 	height: 18px;
@@ -2427,7 +2428,7 @@ div.action-links {
 }
 
 #plugin-information-tabs a.current {
-	margin: 0 -1px 0;
+	margin: 0 -1px -1px;
 	background: #fff;
 	border: 1px solid #ddd;
 	border-bottom-color: #fff;
@@ -3360,53 +3361,6 @@ img {
 /* =Media Queries
 -------------------------------------------------------------- */
 
-/* @todo: de-duplication */
-@media only screen and (min-width: 769px) {
-	/* categories */
-	#col-left {
-		width: 35%;
-	}
-
-	#col-right {
-		width: 65%;
-	}
-}
-
-@media only screen and (max-width: 860px) {
-
-	/* categories */
-	#col-left {
-		width: 35%;
-	}
-
-	#col-right {
-		width: 65%;
-	}
-}
-
-@media only screen and (min-width: 980px) {
-
-	/* categories */
-	#col-left {
-		width: 35%;
-	}
-
-	#col-right {
-		width: 65%;
-	}
-}
-
-@media only screen and (max-width: 768px) {
-	/* categories */
-	#col-left {
-		width: 100%;
-	}
-
-	#col-right {
-		width: 100%;
-	}
-}
-
 /**
  * HiDPI Displays
  */
@@ -3475,7 +3429,15 @@ img {
 		margin-right: 0;
 	}
 
-	.col-wrap {
+	/* categories */
+	#col-left,
+	#col-right {
+		float: none;
+		width: auto;
+	}
+
+	#col-left .col-wrap,
+	#col-right .col-wrap {
 		padding: 0;
 	}
 

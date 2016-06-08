@@ -104,7 +104,7 @@ class WP_Plugin_Install_List_Table extends WP_List_Table {
 		$nonmenu_tabs = array( 'plugin-information' ); // Valid actions to perform which do not have a Menu item.
 
 		/**
-		 * Filter the tabs shown on the Plugin Install screen.
+		 * Filters the tabs shown on the Plugin Install screen.
 		 *
 		 * @since 2.7.0
 		 *
@@ -114,7 +114,7 @@ class WP_Plugin_Install_List_Table extends WP_List_Table {
 		$tabs = apply_filters( 'install_plugins_tabs', $tabs );
 
 		/**
-		 * Filter tabs not associated with a menu item on the Plugin Install screen.
+		 * Filters tabs not associated with a menu item on the Plugin Install screen.
 		 *
 		 * @since 2.7.0
 		 *
@@ -170,8 +170,13 @@ class WP_Plugin_Install_List_Table extends WP_List_Table {
 				break;
 
 			case 'favorites':
-				$user = isset( $_GET['user'] ) ? wp_unslash( $_GET['user'] ) : get_user_option( 'wporg_favorites' );
-				update_user_meta( get_current_user_id(), 'wporg_favorites', $user );
+				$action = 'save_wporg_username_' . get_current_user_id();
+				if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( wp_unslash( $_GET['_wpnonce'] ), $action ) ) {
+					$user = isset( $_GET['user'] ) ? wp_unslash( $_GET['user'] ) : get_user_option( 'wporg_favorites' );
+					update_user_meta( get_current_user_id(), 'wporg_favorites', $user );
+				} else {
+					$user = get_user_option( 'wporg_favorites' );
+				}
 				if ( $user )
 					$args['user'] = $user;
 				else
@@ -186,7 +191,7 @@ class WP_Plugin_Install_List_Table extends WP_List_Table {
 		}
 
 		/**
-		 * Filter API request arguments for each Plugin Install screen tab.
+		 * Filters API request arguments for each Plugin Install screen tab.
 		 *
 		 * The dynamic portion of the hook name, `$tab`, refers to the plugin install tabs.
 		 * Default tabs include 'featured', 'popular', 'recommended', 'favorites', and 'upload'.
@@ -489,7 +494,7 @@ class WP_Plugin_Install_List_Table extends WP_List_Table {
 			}
 
 			/**
-			 * Filter the install action links for a plugin.
+			 * Filters the install action links for a plugin.
 			 *
 			 * @since 2.7.0
 			 *

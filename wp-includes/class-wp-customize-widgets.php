@@ -99,7 +99,7 @@ final class WP_Customize_Widgets {
 		}
 
 		add_filter( 'customize_dynamic_setting_args',          array( $this, 'filter_customize_dynamic_setting_args' ), 10, 2 );
-		add_action( 'after_setup_theme',                       array( $this, 'register_settings' ) );
+		add_action( 'widgets_init',                            array( $this, 'register_settings' ), 95 );
 		add_action( 'wp_loaded',                               array( $this, 'override_sidebars_widgets_for_theme_switch' ) );
 		add_action( 'customize_controls_init',                 array( $this, 'customize_controls_init' ) );
 		add_action( 'customize_register',                      array( $this, 'schedule_customize_register' ), 1 );
@@ -349,7 +349,7 @@ final class WP_Customize_Widgets {
 	/**
 	 * Ensures widgets are available for all types of previews.
 	 *
-	 * When in preview, hook to 'customize_register' for settings after WordPress is loaded
+	 * When in preview, hook to {@see 'customize_register'} for settings after WordPress is loaded
 	 * so that all filters have been initialized (e.g. Widget Visibility).
 	 *
 	 * @since 3.9.0
@@ -375,6 +375,8 @@ final class WP_Customize_Widgets {
 	 */
 	public function customize_register() {
 		global $wp_registered_widgets, $wp_registered_widget_controls, $wp_registered_sidebars;
+
+		add_filter( 'sidebars_widgets', array( $this, 'preview_sidebars_widgets' ), 1 );
 
 		$sidebars_widgets = array_merge(
 			array( 'wp_inactive_widgets' => array() ),
@@ -460,6 +462,37 @@ final class WP_Customize_Widgets {
 				);
 
 				/**
+				 * Filters Customizer widget section arguments for a given sidebar.
+				 *
+				 * @since 3.9.0
+				 *
+				 * @param array      $section_args Array of Customizer widget section arguments.
+				 * @param string     $section_id   Customizer section ID.
+				 * @param int|string $sidebar_id   Sidebar ID.
+				 */
+				$section_args = apply_filters( 'customizer_widgets_section_args', $section_args, $section_id, $sidebar_id );
+
+				$section = new WP_Customize_Sidebar_Section( $this->manager, $section_id, $section_args );
+				$this->manager->add_section( $section );
+
+				$control = new WP_Widget_Area_Customize_Control( $this->manager, $setting_id, array(
+					'section'    => $section_id,
+					'sidebar_id' => $sidebar_id,
+					'priority'   => count( $sidebar_widget_ids ), // place 'Add Widget' and 'Reorder' buttons at end.
+				) );
+				$new_setting_ids[] = $setting_id;
+
+				$this->manager->add_control( $control );
+
+				$section_args = array(
+					'title' => $title,
+					'description' => $description,
+					'priority' => array_search( $sidebar_id, array_keys( $wp_registered_sidebars ) ),
+					'panel' => 'widgets',
+					'sidebar_id' => $sidebar_id,
+				);
+
+				/**
 				 * Filter Customizer widget section arguments for a given sidebar.
 				 *
 				 * @since 3.9.0
@@ -516,8 +549,6 @@ final class WP_Customize_Widgets {
 				$this->manager->get_setting( $new_setting_id )->preview();
 			}
 		}
-
-		add_filter( 'sidebars_widgets', array( $this, 'preview_sidebars_widgets' ), 1 );
 	}
 
 	/**
@@ -563,7 +594,7 @@ final class WP_Customize_Widgets {
 	 * have widths of 400 and yet they still render fine in the Customizer panel.
 	 *
 	 * This method will return all Core widgets as being not wide, but this can be
-	 * overridden with the is_wide_widget_in_customizer filter.
+	 * overridden with the {@see 'is_wide_widget_in_customizer'} filter.
 	 *
 	 * @since 3.9.0
 	 * @access public
@@ -582,7 +613,7 @@ final class WP_Customize_Widgets {
 		$is_wide          = ( $width > 250 && ! $is_core );
 
 		/**
-		 * Filter whether the given widget is considered "wide".
+		 * Filters whether the given widget is considered "wide".
 		 *
 		 * @since 3.9.0
 		 *
@@ -841,6 +872,9 @@ final class WP_Customize_Widgets {
 	 */
 	public function print_footer_scripts() {
 		/** This action is documented in wp-admin/admin-footer.php */
+		do_action( 'admin_print_footer_scripts-widgets.php' );
+
+		/** This action is documented in wp-admin/admin-footer.php */
 		do_action( 'admin_print_footer_scripts' );
 
 		/** This action is documented in wp-admin/admin-footer.php */
@@ -877,7 +911,7 @@ final class WP_Customize_Widgets {
 		$args = array_merge( $args, $overrides );
 
 		/**
-		 * Filter the common arguments supplied when constructing a Customizer setting.
+		 * Filters the common arguments supplied when constructing a Customizer setting.
 		 *
 		 * @since 3.9.0
 		 *
@@ -1138,7 +1172,7 @@ final class WP_Customize_Widgets {
 	 * @return array
 	 */
 	public function preview_sidebars_widgets( $sidebars_widgets ) {
-		$sidebars_widgets = get_option( 'sidebars_widgets' );
+		$sidebars_widgets = get_option( 'sidebars_widgets', array() );
 
 		unset( $sidebars_widgets['array_version'] );
 		return $sidebars_widgets;
@@ -1470,7 +1504,8 @@ final class WP_Customize_Widgets {
 		}
 
 		// If deleting widget.
-		$is_widget_delete = ! empty( $this->get_post_value( 'delete_widget' ) );
+		$delete_widget_val = $this->get_post_value( 'delete_widget' );
+		$is_widget_delete = ! empty( $delete_widget_val );
 
 		if ( $is_widget_delete ) {
 			// Set post values needed in widget update_callback.
@@ -2081,32 +2116,48 @@ final class WP_Customize_Widgets {
 	}
 
 	/**
+	 * {@internal Missing Summary}
+	 *
+	 * See the {@see 'customize_dynamic_setting_args'} filter.
+	 *
 	 * @since 3.9.0
-	 * @deprecated 4.2.0 Deprecated in favor of customize_dynamic_setting_args filter.
+	 * @deprecated 4.2.0 Deprecated in favor of the {@see 'customize_dynamic_setting_args'} filter.
 	 */
 	public function setup_widget_addition_previews() {
 		_deprecated_function( __METHOD__, '4.2.0' );
 	}
 
 	/**
+	 * {@internal Missing Summary}
+	 *
+	 * See the {@see 'customize_dynamic_setting_args'} filter.
+	 *
 	 * @since 3.9.0
-	 * @deprecated 4.2.0 Deprecated in favor of customize_dynamic_setting_args filter.
+	 * @deprecated 4.2.0 Deprecated in favor of the {@see 'customize_dynamic_setting_args'} filter.
 	 */
 	public function prepreview_added_sidebars_widgets() {
 		_deprecated_function( __METHOD__, '4.2.0' );
 	}
 
 	/**
+	 * {@internal Missing Summary}
+	 *
+	 * See the {@see 'customize_dynamic_setting_args'} filter.
+	 *
 	 * @since 3.9.0
-	 * @deprecated 4.2.0 Deprecated in favor of customize_dynamic_setting_args filter.
+	 * @deprecated 4.2.0 Deprecated in favor of the {@see 'customize_dynamic_setting_args'} filter.
 	 */
 	public function prepreview_added_widget_instance() {
 		_deprecated_function( __METHOD__, '4.2.0' );
 	}
 
 	/**
+	 * {@internal Missing Summary}
+	 *
+	 * See the {@see 'customize_dynamic_setting_args'} filter.
+	 *
 	 * @since 3.9.0
-	 * @deprecated 4.2.0 Deprecated in favor of customize_dynamic_setting_args filter.
+	 * @deprecated 4.2.0 Deprecated in favor of the {@see 'customize_dynamic_setting_args'} filter.
 	 */
 	public function remove_prepreview_filters() {
 		_deprecated_function( __METHOD__, '4.2.0' );

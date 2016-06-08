@@ -27,6 +27,7 @@
 			this.id = id;
 			this.transport = this.transport || 'refresh';
 			this._dirty = options.dirty || false;
+			this.notifications = new api.Values({ defaultConstructor: api.Notification });
 
 			// Whenever the setting's value changes, refresh the preview.
 			this.bind( this.preview );
@@ -77,7 +78,7 @@
 	 * @param {Function} [params.completeCallback]
 	 */
 	focus = function ( params ) {
-		var construct, completeCallback, focus;
+		var construct, completeCallback, focus, focusElement;
 		construct = this;
 		params = params || {};
 		focus = function () {
@@ -90,8 +91,12 @@
 				focusContainer = construct.container;
 			}
 
-			// Note that we can't use :focusable due to a jQuery UI issue. See: https://github.com/jquery/jquery-ui/pull/1583
-			focusContainer.find( 'input, select, textarea, button, object, a[href], [tabindex]' ).filter( ':visible' ).first().focus();
+			focusElement = focusContainer.find( '.control-focus:first' );
+			if ( 0 === focusElement.length ) {
+				// Note that we can't use :focusable due to a jQuery UI issue. See: https://github.com/jquery/jquery-ui/pull/1583
+				focusElement = focusContainer.find( 'input, select, textarea, button, object, a[href], [tabindex]' ).filter( ':visible' ).first();
+			}
+			focusElement.focus();
 		};
 		if ( params.completeCallback ) {
 			completeCallback = params.completeCallback;
@@ -1474,6 +1479,7 @@
 			control.priority = new api.Value();
 			control.active = new api.Value();
 			control.activeArgumentsQueue = [];
+			control.notifications = new api.Values({ defaultConstructor: api.Notification });
 
 			control.elements = [];
 
@@ -1537,12 +1543,37 @@
 
 					control.setting = control.settings['default'] || null;
 
+					_.each( control.settings, function( setting ) {
+						setting.notifications.bind( 'add', function( settingNotification ) {
+							var controlNotification = new api.Notification( setting.id + ':' + settingNotification.code, settingNotification );
+							control.notifications.add( controlNotification.code, controlNotification );
+						} );
+						setting.notifications.bind( 'remove', function( settingNotification ) {
+							control.notifications.remove( setting.id + ':' + settingNotification.code );
+						} );
+					} );
+
 					control.embed();
 				}) );
 			}
 
 			// After the control is embedded on the page, invoke the "ready" method.
 			control.deferred.embedded.done( function () {
+				/*
+				 * Note that this debounced/deferred rendering is needed for two reasons:
+				 * 1) The 'remove' event is triggered just _before_ the notification is actually removed.
+				 * 2) Improve performance when adding/removing multiple notifications at a time.
+				 */
+				var debouncedRenderNotifications = _.debounce( function renderNotifications() {
+					control.renderNotifications();
+				} );
+				control.notifications.bind( 'add', function( notification ) {
+					wp.a11y.speak( notification.message, 'assertive' );
+					debouncedRenderNotifications();
+				} );
+				control.notifications.bind( 'remove', debouncedRenderNotifications );
+				control.renderNotifications();
+
 				control.ready();
 			});
 		},
@@ -1583,6 +1614,85 @@
 		 * @abstract
 		 */
 		ready: function() {},
+
+		/**
+		 * Get the element inside of a control's container that contains the validation error message.
+		 *
+		 * Control subclasses may override this to return the proper container to render notifications into.
+		 * Injects the notification container for existing controls that lack the necessary container,
+		 * including special handling for nav menu items and widgets.
+		 *
+		 * @since 4.6.0
+		 * @returns {jQuery} Setting validation message element.
+		 * @this {wp.customize.Control}
+		 */
+		getNotificationsContainerElement: function() {
+			var control = this, controlTitle, notificationsContainer;
+
+			notificationsContainer = control.container.find( '.customize-control-notifications-container:first' );
+			if ( notificationsContainer.length ) {
+				return notificationsContainer;
+			}
+
+			notificationsContainer = $( '<div class="customize-control-notifications-container"></div>' );
+
+			if ( control.container.hasClass( 'customize-control-nav_menu_item' ) ) {
+				control.container.find( '.menu-item-settings:first' ).prepend( notificationsContainer );
+			} else if ( control.container.hasClass( 'customize-control-widget_form' ) ) {
+				control.container.find( '.widget-inside:first' ).prepend( notificationsContainer );
+			} else {
+				controlTitle = control.container.find( '.customize-control-title' );
+				if ( controlTitle.length ) {
+					controlTitle.after( notificationsContainer );
+				} else {
+					control.container.prepend( notificationsContainer );
+				}
+			}
+			return notificationsContainer;
+		},
+
+		/**
+		 * Render notifications.
+		 *
+		 * Renders the `control.notifications` into the control's container.
+		 * Control subclasses may override this method to do their own handling
+		 * of rendering notifications.
+		 *
+		 * @since 4.6.0
+		 * @this {wp.customize.Control}
+		 */
+		renderNotifications: function() {
+			var control = this, container, notifications, hasError = false;
+			container = control.getNotificationsContainerElement();
+			if ( ! container || ! container.length ) {
+				return;
+			}
+			notifications = [];
+			control.notifications.each( function( notification ) {
+				notifications.push( notification );
+				if ( 'error' === notification.type ) {
+					hasError = true;
+				}
+			} );
+
+			if ( 0 === notifications.length ) {
+				container.stop().slideUp( 'fast' );
+			} else {
+				container.stop().slideDown( 'fast', null, function() {
+					$( this ).css( 'height', 'auto' );
+				} );
+			}
+
+			if ( ! control.notificationsTemplate ) {
+				control.notificationsTemplate = wp.template( 'customize-control-notifications' );
+			}
+
+			control.container.toggleClass( 'has-notifications', 0 !== notifications.length );
+			control.container.toggleClass( 'has-error', hasError );
+			container.empty().append( $.trim(
+				control.notificationsTemplate( { notifications: notifications, altNotice: Boolean( control.altNotice ) } )
+			) );
+		},
 
 		/**
 		 * Normal controls do not expand, so just expand its parent
@@ -2093,22 +2203,22 @@
 				xInit = parseInt( control.params.width, 10 ),
 				yInit = parseInt( control.params.height, 10 ),
 				ratio = xInit / yInit,
-				xImg  = realWidth,
-				yImg  = realHeight,
+				xImg  = xInit,
+				yImg  = yInit,
 				x1, y1, imgSelectOptions;
 
 			controller.set( 'canSkipCrop', ! control.mustBeCropped( flexWidth, flexHeight, xInit, yInit, realWidth, realHeight ) );
 
-			if ( xImg / yImg > ratio ) {
-				yInit = yImg;
+			if ( realWidth / realHeight > ratio ) {
+				yInit = realHeight;
 				xInit = yInit * ratio;
 			} else {
-				xInit = xImg;
+				xInit = realWidth;
 				yInit = xInit / ratio;
 			}
 
-			x1 = ( xImg - xInit ) / 2;
-			y1 = ( yImg - yInit ) / 2;
+			x1 = ( realWidth - xInit ) / 2;
+			y1 = ( realHeight - yInit ) / 2;
 
 			imgSelectOptions = {
 				handles: true,
@@ -2117,6 +2227,8 @@
 				persistent: true,
 				imageWidth: realWidth,
 				imageHeight: realHeight,
+				minWidth: xImg > xInit ? xInit : xImg,
+				minHeight: yImg > yInit ? yInit : yImg,
 				x1: x1,
 				y1: y1,
 				x2: xInit + x1,
@@ -2126,11 +2238,15 @@
 			if ( flexHeight === false && flexWidth === false ) {
 				imgSelectOptions.aspectRatio = xInit + ':' + yInit;
 			}
-			if ( flexHeight === false ) {
-				imgSelectOptions.maxHeight = yInit;
+
+			if ( true === flexHeight ) {
+				delete imgSelectOptions.minHeight;
+				imgSelectOptions.maxWidth = realWidth;
 			}
-			if ( flexWidth === false ) {
-				imgSelectOptions.maxWidth = xInit;
+
+			if ( true === flexWidth ) {
+				delete imgSelectOptions.minWidth;
+				imgSelectOptions.maxHeight = realHeight;
 			}
 
 			return imgSelectOptions;
@@ -3213,6 +3329,7 @@
 		}
 	});
 
+	api.settingConstructor = {};
 	api.controlConstructor = {
 		color:         api.ColorControl,
 		media:         api.MediaControl,
@@ -3262,12 +3379,7 @@
 		});
 
 		// Expand/Collapse the main customizer customize info.
-		$( '.customize-info' ).find( '> .accordion-section-title .customize-help-toggle' ).on( 'click keydown', function( event ) {
-			if ( api.utils.isKeydownButNotEnterEvent( event ) ) {
-				return;
-			}
-			event.preventDefault(); // Keep this AFTER the key filter above
-
+		$( '.customize-info' ).find( '> .accordion-section-title .customize-help-toggle' ).on( 'click', function() {
 			var section = $( this ).closest( '.accordion-section' ),
 				content = section.find( '.customize-panel-description:first' );
 
@@ -3318,13 +3430,75 @@
 				};
 			},
 
+			/**
+			 * Handle invalid_settings in an error response for the customize-save request.
+			 *
+			 * Add notifications to the settings and focus on the first control that has an invalid setting.
+			 *
+			 * @since 4.6.0
+			 * @private
+			 *
+			 * @param {object} response
+			 * @param {object} response.invalid_settings
+			 * @returns {void}
+			 */
+			_handleInvalidSettingsError: function( response ) {
+				var invalidControls = [], wasFocused = false;
+				if ( _.isEmpty( response.invalid_settings ) ) {
+					return;
+				}
+
+				// Find the controls that correspond to each invalid setting.
+				_.each( response.invalid_settings, function( notifications, settingId ) {
+					var setting = api( settingId );
+					if ( setting ) {
+						_.each( notifications, function( notificationParams, code ) {
+							var notification = new api.Notification( code, notificationParams );
+							setting.notifications.add( code, notification );
+						} );
+					}
+
+					api.control.each( function( control ) {
+						_.each( control.settings, function( controlSetting ) {
+							if ( controlSetting.id === settingId ) {
+								invalidControls.push( control );
+							}
+						} );
+					} );
+				} );
+
+				// Focus on the first control that is inside of an expanded section (one that is visible).
+				_( invalidControls ).find( function( control ) {
+					var isExpanded = control.section() && api.section.has( control.section() ) && api.section( control.section() ).expanded();
+					if ( isExpanded && control.expanded ) {
+						isExpanded = control.expanded();
+					}
+					if ( isExpanded ) {
+						control.focus();
+						wasFocused = true;
+					}
+					return wasFocused;
+				} );
+
+				// Focus on the first invalid control.
+				if ( ! wasFocused && invalidControls[0] ) {
+					invalidControls[0].focus();
+				}
+			},
+
 			save: function() {
 				var self = this,
 					processing = api.state( 'processing' ),
 					submitWhenDoneProcessing,
-					submit;
+					submit,
+					modifiedWhileSaving = {};
 
 				body.addClass( 'saving' );
+
+				function captureSettingModifiedDuringSave( setting ) {
+					modifiedWhileSaving[ setting.id ] = true;
+				}
+				api.bind( 'change', captureSettingModifiedDuringSave );
 
 				submit = function () {
 					var request, query;
@@ -3333,10 +3507,27 @@
 					} );
 					request = wp.ajax.post( 'customize_save', query );
 
+					// Disable save button during the save request.
+					saveBtn.prop( 'disabled', true );
+
 					api.trigger( 'save', request );
+
+					/*
+					 * Remove all setting error notifications prior to save, allowing
+					 * server to respond with fresh validation error notifications.
+					 */
+					api.each( function( setting ) {
+						setting.notifications.each( function( notification ) {
+							if ( 'error' === notification.type ) {
+								setting.notifications.remove( notification.code );
+							}
+						} );
+					} );
 
 					request.always( function () {
 						body.removeClass( 'saving' );
+						saveBtn.prop( 'disabled', false );
+						api.unbind( 'change', captureSettingModifiedDuringSave );
 					} );
 
 					request.fail( function ( response ) {
@@ -3356,18 +3547,29 @@
 								self.preview.iframe.show();
 							} );
 						}
+
+						self._handleInvalidSettingsError( response );
+
 						api.trigger( 'error', response );
 					} );
 
 					request.done( function( response ) {
-						// Clear setting dirty states
-						api.each( function ( value ) {
-							value._dirty = false;
+
+						// Clear setting dirty states, if setting wasn't modified while saving.
+						api.each( function( setting ) {
+							if ( ! modifiedWhileSaving[ setting.id ] ) {
+								setting._dirty = false;
+							}
 						} );
 
 						api.previewer.send( 'saved', response );
 
 						api.trigger( 'saved', response );
+
+						// Restore the global dirty state if any settings were modified during save.
+						if ( ! _.isEmpty( modifiedWhileSaving ) ) {
+							api.state( 'saved' ).set( false );
+						}
 					} );
 				};
 
@@ -3400,11 +3602,15 @@
 
 		// Create Settings
 		$.each( api.settings.settings, function( id, data ) {
-			api.create( id, id, data.value, {
+			var constructor = api.settingConstructor[ data.type ] || api.Setting,
+				setting;
+
+			setting = new constructor( id, data.value, {
 				transport: data.transport,
 				previewer: api.previewer,
 				dirty: !! data.dirty
 			} );
+			api.add( id, setting );
 		});
 
 		// Create Panels
@@ -3623,13 +3829,46 @@
 			overlay.toggleClass( 'collapsed' ).toggleClass( 'expanded' );
 		});
 
-		$( '.customize-controls-preview-toggle' ).on( 'click keydown', function( event ) {
-			if ( api.utils.isKeydownButNotEnterEvent( event ) ) {
+		// Keyboard shortcuts - esc to exit section/panel.
+		$( 'body' ).on( 'keydown', function( event ) {
+			var collapsedObject, expandedControls = [], expandedSections = [], expandedPanels = [];
+
+			if ( 27 !== event.which ) { // Esc.
 				return;
 			}
 
+			// Check for expanded expandable controls (e.g. widgets and nav menus items), sections, and panels.
+			api.control.each( function( control ) {
+				if ( control.expanded && control.expanded() && _.isFunction( control.collapse ) ) {
+					expandedControls.push( control );
+				}
+			});
+			api.section.each( function( section ) {
+				if ( section.expanded() ) {
+					expandedSections.push( section );
+				}
+			});
+			api.panel.each( function( panel ) {
+				if ( panel.expanded() ) {
+					expandedPanels.push( panel );
+				}
+			});
+
+			// Skip collapsing expanded controls if there are no expanded sections.
+			if ( expandedControls.length > 0 && 0 === expandedSections.length ) {
+				expandedControls.length = 0;
+			}
+
+			// Collapse the most granular expanded object.
+			collapsedObject = expandedControls[0] || expandedSections[0] || expandedPanels[0];
+			if ( collapsedObject ) {
+				collapsedObject.collapse();
+				event.preventDefault();
+			}
+		});
+
+		$( '.customize-controls-preview-toggle' ).on( 'click', function() {
 			overlay.toggleClass( 'preview-only' );
-			event.preventDefault();
 		});
 
 		// Previewed device bindings.
@@ -3721,17 +3960,6 @@
 				parent.send( event );
 			});
 		} );
-
-		/*
-		 * When activated, let the loader handle redirecting the page.
-		 * If no loader exists, redirect the page ourselves (if a url exists).
-		 */
-		api.bind( 'activated', function() {
-			if ( parent.targetWindow() )
-				parent.send( 'activated', api.settings.url.activated );
-			else if ( api.settings.url.activated )
-				window.location = api.settings.url.activated;
-		});
 
 		// Pass titles to the parent
 		api.bind( 'title', function( newTitle ) {

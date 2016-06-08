@@ -75,7 +75,7 @@ if ( $tab ) {
 $help_overview =
 	'<p>' . sprintf(
 			/* translators: %s: Theme Directory URL */
-			__( 'You can find additional themes for your site by using the Theme Browser/Installer on this screen, which will display themes from the <a href="%s" target="_blank">WordPress.org Theme Directory</a>. These themes are designed and developed by third parties, are available free of charge, and are compatible with the license WordPress uses.' ),
+			__( 'You can find additional themes for your site by using the Theme Browser/Installer on this screen, which will display themes from the <a href="%s" target="_blank">WordPress Theme Directory</a>. These themes are designed and developed by third parties, are available free of charge, and are compatible with the license WordPress uses.' ),
 			__( 'https://wordpress.org/themes/' )
 		) . '</p>' .
 	'<p>' . __( 'You can Search for themes by keyword, author, or tag, or can get more specific and search by criteria listed in the feature filter.' ) . ' <span id="live-search-desc">' . __( 'The search results will be updated as you type.' ) . '</span></p>' .
@@ -116,10 +116,9 @@ include(ABSPATH . 'wp-admin/admin-header.php');
 	echo esc_html( $title );
 
 	/**
-	 * Filter the tabs shown on the Add Themes screen.
+	 * Filters the tabs shown on the Add Themes screen.
 	 *
-	 * This filter is for backwards compatibility only, for the suppression
-	 * of the upload tab.
+	 * This filter is for backward compatibility only, for the suppression of the upload tab.
 	 *
 	 * @since 2.8.0
 	 *
@@ -127,8 +126,7 @@ include(ABSPATH . 'wp-admin/admin-header.php');
 	 */
 	$tabs = apply_filters( 'install_themes_tabs', array( 'upload' => __( 'Upload Theme' ) ) );
 	if ( ! empty( $tabs['upload'] ) && current_user_can( 'upload_themes' ) ) {
-		echo ' <a href="#" class="upload page-title-action">' . __( 'Upload Theme' ) . '</a>';
-		echo ' <a href="#" class="browse-themes page-title-action">' . _x( 'Browse', 'themes' ) . '</a>';
+		echo ' <a href="#" class="upload-view-toggle page-title-action">' . __( 'Upload Theme' ) . '</a>';
 	}
 	?></h1>
 
@@ -156,13 +154,19 @@ include(ABSPATH . 'wp-admin/admin-header.php');
 
 		<div class="favorites-form">
 			<?php
-			$user = isset( $_GET['user'] ) ? wp_unslash( $_GET['user'] ) : get_user_option( 'wporg_favorites' );
-			update_user_meta( get_current_user_id(), 'wporg_favorites', $user );
+			$action = 'save_wporg_username_' . get_current_user_id();
+			if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( wp_unslash( $_GET['_wpnonce'] ), $action ) ) {
+				$user = isset( $_GET['user'] ) ? wp_unslash( $_GET['user'] ) : get_user_option( 'wporg_favorites' );
+				update_user_meta( get_current_user_id(), 'wporg_favorites', $user );
+			} else {
+				$user = get_user_option( 'wporg_favorites' );
+			}
 			?>
 			<p class="install-help"><?php _e( 'If you have marked themes as favorites on WordPress.org, you can browse them here.' ); ?></p>
 
 			<p>
 				<label for="wporg-username-input"><?php _e( 'Your WordPress.org username:' ); ?></label>
+				<input type="hidden" id="wporg-username-nonce" name="_wpnonce" value="<?php echo esc_attr( wp_create_nonce( $action ) ); ?>" />
 				<input type="search" id="wporg-username-input" value="<?php echo esc_attr( $user ); ?>" />
 				<input type="button" class="button button-secondary favorites-form-submit" value="<?php esc_attr_e( 'Get Favorites' ); ?>" />
 			</p>

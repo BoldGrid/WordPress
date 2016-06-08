@@ -1548,6 +1548,7 @@ themes.view.Installer = themes.view.Appearance.extend({
 	// Save the user's WordPress.org username and get his favorite themes.
 	saveUsername: function ( event ) {
 		var username = $( '#wporg-username-input' ).val(),
+			nonce = $( '#wporg-username-nonce' ).val(),
 			request = { browse: 'favorites', user: username },
 			that = this;
 
@@ -1562,6 +1563,7 @@ themes.view.Installer = themes.view.Appearance.extend({
 
 		return wp.ajax.send( 'save-wporg-username', {
 			data: {
+				_wpnonce: nonce,
 				username: username
 			},
 			success: function () {
@@ -1602,17 +1604,24 @@ themes.view.Installer = themes.view.Appearance.extend({
 	// in new location
 	searchContainer: $( '.wp-filter .search-form' ),
 
+	/*
+	 * When a user presses the "Upload Theme" button, show the upload form in place.
+	 * @todo consider to abstract this in a generic, reusable, utility, see plugin-install.js
+	 */
 	uploader: function() {
-		$( 'a.upload' ).on( 'click', function( event ) {
-			event.preventDefault();
-			$( 'body' ).addClass( 'show-upload-theme' );
-			themes.router.navigate( themes.router.baseUrl( '?upload' ), { replace: true } );
-		});
-		$( 'a.browse-themes' ).on( 'click', function( event ) {
-			event.preventDefault();
-			$( 'body' ).removeClass( 'show-upload-theme' );
-			themes.router.navigate( themes.router.baseUrl( '' ), { replace: true } );
-		});
+		var uploadViewToggle = $( '.upload-view-toggle' ),
+			$body = $( document.body );
+
+		uploadViewToggle
+			.attr({
+				role: 'button',
+				'aria-expanded': 'false'
+			})
+			.on( 'click', function( event ) {
+				event.preventDefault();
+				$body.toggleClass( 'show-upload-view' );
+				uploadViewToggle.attr( 'aria-expanded', $body.hasClass( 'show-upload-view' ) );
+			});
 	},
 
 	// Toggle the full filters navigation

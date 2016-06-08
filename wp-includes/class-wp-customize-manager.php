@@ -242,7 +242,7 @@ final class WP_Customize_Manager {
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-nav-menu-setting.php' );
 
 		/**
-		 * Filter the core Customizer components to load.
+		 * Filters the core Customizer components to load.
 		 *
 		 * This allows Core components to be excluded from being instantiated by
 		 * filtering them out of the array. Note that this filter generally runs
@@ -387,7 +387,7 @@ final class WP_Customize_Manager {
 		show_admin_bar( false );
 
 		if ( ! current_user_can( 'customize' ) ) {
-			$this->wp_die( -1, __( 'You are not allowed to customize the appearance of this site.' ) );
+			$this->wp_die( -1, __( 'You are not allowed to customize this site.' ) );
 		}
 
 		$this->original_stylesheet = get_stylesheet();
@@ -424,7 +424,7 @@ final class WP_Customize_Manager {
 	 * @since 3.4.0
 	 */
 	public function after_setup_theme() {
-		$doing_ajax_or_is_customized = ( $this->doing_ajax() || isset( $_SERVER['customized'] ) );
+		$doing_ajax_or_is_customized = ( $this->doing_ajax() || isset( $_POST['customized'] ) );
 		if ( ! $doing_ajax_or_is_customized && ! validate_current_theme() ) {
 			wp_redirect( 'themes.php?broken=true' );
 			exit;
@@ -654,19 +654,31 @@ final class WP_Customize_Manager {
 	 * Return the sanitized value for a given setting from the request's POST data.
 	 *
 	 * @since 3.4.0
-	 * @since 4.1.1 Introduced 'default' parameter.
+	 * @since 4.1.1 Introduced `$default` parameter.
+	 * @since 4.6.0 Return `$default` when setting post value is invalid.
+	 * @see WP_REST_Server::dispatch()
+	 * @see WP_Rest_Request::sanitize_params()
+	 * @see WP_Rest_Request::has_valid_params()
 	 *
-	 * @param WP_Customize_Setting $setting A WP_Customize_Setting derived object
-	 * @param mixed $default value returned $setting has no post value (added in 4.2.0).
-	 * @return string|mixed $post_value Sanitized value or the $default provided
+	 * @param WP_Customize_Setting $setting A WP_Customize_Setting derived object.
+	 * @param mixed                $default Value returned $setting has no post value (added in 4.2.0)
+	 *                                      or the post value is invalid (added in 4.6.0).
+	 * @return string|mixed $post_value Sanitized value or the $default provided.
 	 */
 	public function post_value( $setting, $default = null ) {
 		$post_values = $this->unsanitized_post_values();
-		if ( array_key_exists( $setting->id, $post_values ) ) {
-			return $setting->sanitize( $post_values[ $setting->id ] );
-		} else {
+		if ( ! array_key_exists( $setting->id, $post_values ) ) {
 			return $default;
 		}
+		$value = $setting->sanitize( $post_values[ $setting->id ] );
+		if ( is_null( $value ) || is_wp_error( $value ) ) {
+			return $default;
+		}
+		$valid = $setting->validate( $value );
+		if ( is_wp_error( $valid ) ) {
+			return $default;
+		}
+		return $value;
 	}
 
 	/**
@@ -685,7 +697,7 @@ final class WP_Customize_Manager {
 		/**
 		 * Announce when a specific setting's unsanitized post value has been set.
 		 *
-		 * Fires when the {@see WP_Customize_Manager::set_post_value()} method is called.
+		 * Fires when the WP_Customize_Manager::set_post_value() method is called.
 		 *
 		 * The dynamic portion of the hook name, `$setting_id`, refers to the setting ID.
 		 *
@@ -699,7 +711,7 @@ final class WP_Customize_Manager {
 		/**
 		 * Announce when any setting's unsanitized post value has been set.
 		 *
-		 * Fires when the {@see WP_Customize_Manager::set_post_value()} method is called.
+		 * Fires when the WP_Customize_Manager::set_post_value() method is called.
 		 *
 		 * This is useful for `WP_Customize_Setting` instances to watch
 		 * in order to update a cached previewed value.
@@ -893,8 +905,8 @@ final class WP_Customize_Manager {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param mixed $return Value passed through for wp_die_handler filter.
-	 * @return mixed Value passed through for wp_die_handler filter.
+	 * @param mixed $return Value passed through for {@see 'wp_die_handler'} filter.
+	 * @return mixed Value passed through for {@see 'wp_die_handler'} filter.
 	 */
 	public function remove_preview_signature( $return = null ) {
 		remove_action( 'shutdown', array( $this, 'customize_preview_signature' ), 1000 );
@@ -958,7 +970,7 @@ final class WP_Customize_Manager {
 	}
 
 	/**
-	 * Filter the current theme and return the name of the previewed theme.
+	 * Filters the current theme and return the name of the previewed theme.
 	 *
 	 * @since 3.4.0
 	 *
@@ -967,6 +979,38 @@ final class WP_Customize_Manager {
 	 */
 	public function current_theme( $current_theme ) {
 		return $this->theme()->display('Name');
+	}
+
+	/**
+	 * Validate setting values.
+	 *
+	 * Sanitization is applied to the values before being passed for validation.
+	 * Validation is skipped for unregistered settings or for values that are
+	 * already null since they will be skipped anyway.
+	 *
+	 * @since 4.6.0
+	 * @access public
+	 * @see WP_REST_Request::has_valid_params()
+	 *
+	 * @param array $setting_values Mapping of setting IDs to values to sanitize and validate.
+	 * @return array Empty array if all settings were valid. One or more instances of `WP_Error` if any were invalid.
+	 */
+	public function validate_setting_values( $setting_values ) {
+		$validity_errors = array();
+		foreach ( $setting_values as $setting_id => $unsanitized_value ) {
+			$setting = $this->get_setting( $setting_id );
+			if ( ! $setting || is_null( $unsanitized_value ) ) {
+				continue;
+			}
+			$validity = $setting->validate( $setting->sanitize( $unsanitized_value ) );
+			if ( false === $validity || null === $validity ) {
+				$validity = new WP_Error( 'invalid_value', __( 'Invalid value.' ) );
+			}
+			if ( is_wp_error( $validity ) ) {
+				$validity_errors[ $setting_id ] = $validity;
+			}
+		}
+		return $validity_errors;
 	}
 
 	/**
@@ -982,6 +1026,42 @@ final class WP_Customize_Manager {
 		$action = 'save-customize_' . $this->get_stylesheet();
 		if ( ! check_ajax_referer( $action, 'nonce', false ) ) {
 			wp_send_json_error( 'invalid_nonce' );
+		}
+
+		/**
+		 * Fires before save validation happens.
+		 *
+		 * Plugins can add just-in-time `customize_validate_{$setting_id}` filters
+		 * at this point to catch any settings registered after `customize_register`.
+		 *
+		 * @since 4.6.0
+		 *
+		 * @param WP_Customize_Manager $this WP_Customize_Manager instance.
+		 */
+		do_action( 'customize_save_validation_before', $this );
+
+		// Validate settings.
+		$validity_errors = $this->validate_setting_values( $this->unsanitized_post_values() );
+		$invalid_count = count( $validity_errors );
+		if ( $invalid_count > 0 ) {
+			$settings_errors = array();
+			foreach ( $validity_errors as $setting_id => $validity_error ) {
+				$settings_errors[ $setting_id ] = array();
+				foreach ( $validity_error->errors as $error_code => $error_messages ) {
+					$settings_errors[ $setting_id ][ $error_code ] = array(
+						'message' => join( ' ', $error_messages ),
+						'data' => $validity_error->get_error_data( $error_code ),
+					);
+				}
+			}
+			$response = array(
+				'invalid_settings' => $settings_errors,
+				'message' => sprintf( _n( 'There is %s invalid setting.', 'There are %s invalid settings.', $invalid_count ), number_format_i18n( $invalid_count ) ),
+			);
+
+			/** This filter is documented in wp-includes/class-wp-customize-manager.php */
+			$response = apply_filters( 'customize_save_response', $response, $this );
+			wp_send_json_error( $response );
 		}
 
 		// Do we have to switch themes?
@@ -1018,7 +1098,7 @@ final class WP_Customize_Manager {
 		do_action( 'customize_save_after', $this );
 
 		/**
-		 * Filter response data for a successful customize_save AJAX request.
+		 * Filters response data for a successful customize_save AJAX request.
 		 *
 		 * This filter does not apply if there was a nonce or authentication failure.
 		 *
@@ -1103,7 +1183,7 @@ final class WP_Customize_Manager {
 			$setting_class = 'WP_Customize_Setting';
 
 			/**
-			 * Filter a dynamic setting's constructor args.
+			 * Filters a dynamic setting's constructor args.
 			 *
 			 * For a dynamic setting to be registered, this filter must be employed
 			 * to override the default false value with an array of args to pass to
@@ -1384,7 +1464,7 @@ final class WP_Customize_Manager {
 	 * @access public
 	 *
 	 * @param string $control Name of a custom control which is a subclass of
-	 *                        {@see WP_Customize_Control}.
+	 *                        WP_Customize_Control.
 	 */
 	public function register_control_type( $control ) {
 		$this->registered_control_types[] = $control;
@@ -1403,6 +1483,15 @@ final class WP_Customize_Manager {
 			) );
 			$control->print_template();
 		}
+		?>
+		<script type="text/html" id="tmpl-customize-control-notifications">
+			<ul>
+				<# _.each( data.notifications, function( notification ) { #>
+					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }}" data-code="{{ notification.code }}" data-type="{{ notification.type }}">{{ notification.message || notification.code }}</li>
+				<# } ); #>
+			</ul>
+		</script>
+		<?php
 	}
 
 	/**
@@ -1542,6 +1631,7 @@ final class WP_Customize_Manager {
 	 * @param string $preview_url URL to be previewed.
 	 */
 	public function set_preview_url( $preview_url ) {
+		$preview_url = esc_url_raw( $preview_url );
 		$this->preview_url = wp_validate_redirect( $preview_url, home_url( '/' ) );
 	}
 
@@ -1573,6 +1663,7 @@ final class WP_Customize_Manager {
 	 * @param string $return_url URL for return link.
 	 */
 	public function set_return_url( $return_url ) {
+		$return_url = esc_url_raw( $return_url );
 		$return_url = remove_query_arg( wp_removable_query_args(), $return_url );
 		$return_url = wp_validate_redirect( $return_url );
 		$this->return_url = $return_url;
@@ -1651,7 +1742,7 @@ final class WP_Customize_Manager {
 		);
 
 		/**
-		 * Filter nonces for Customizer.
+		 * Filters nonces for Customizer.
 		 *
 		 * @since 4.2.0
 		 *
@@ -1689,7 +1780,7 @@ final class WP_Customize_Manager {
 		}
 
 		/**
-		 * Filter the list of URLs allowed to be clicked and followed in the Customizer preview.
+		 * Filters the list of URLs allowed to be clicked and followed in the Customizer preview.
 		 *
 		 * @since 3.4.0
 		 *
@@ -1763,11 +1854,7 @@ final class WP_Customize_Manager {
 					printf(
 						"s[%s] = %s;\n",
 						wp_json_encode( $setting->id ),
-						wp_json_encode( array(
-							'value'     => $setting->js_value(),
-							'transport' => $setting->transport,
-							'dirty'     => $setting->dirty,
-						) )
+						wp_json_encode( $setting->json() )
 					);
 				}
 			}
@@ -1813,7 +1900,7 @@ final class WP_Customize_Manager {
 		);
 
 		/**
-		 * Filter the available devices to allow previewing in the Customizer.
+		 * Filters the available devices to allow previewing in the Customizer.
 		 *
 		 * @since 4.5.0
 		 *
@@ -1959,11 +2046,15 @@ final class WP_Customize_Manager {
 			'transport'      => 'postMessage',
 		) );
 
-		$this->add_control( new WP_Customize_Media_Control( $this, 'custom_logo', array(
-			'label'    => __( 'Logo' ),
-			'section'  => 'title_tagline',
-			'priority' => 8,
-			'mime_type' => 'image',
+		$custom_logo_args = get_theme_support( 'custom-logo' );
+		$this->add_control( new WP_Customize_Cropped_Image_Control( $this, 'custom_logo', array(
+			'label'         => __( 'Logo' ),
+			'section'       => 'title_tagline',
+			'priority'      => 8,
+			'height'        => $custom_logo_args[0]['height'],
+			'width'         => $custom_logo_args[0]['width'],
+			'flex_height'   => $custom_logo_args[0]['flex-height'],
+			'flex_width'    => $custom_logo_args[0]['flex-width'],
 			'button_labels' => array(
 				'select'       => __( 'Select logo' ),
 				'change'       => __( 'Change logo' ),
@@ -1975,10 +2066,10 @@ final class WP_Customize_Manager {
 			),
 		) ) );
 
-		$this->selective_refresh->add_partial( 'site_logo', array(
-			'settings'            => array( 'site_logo' ),
-			'selector'            => '.site-logo-link',
-			'render_callback'     => array( $this, '_render_site_logo_partial' ),
+		$this->selective_refresh->add_partial( 'custom_logo', array(
+			'settings'            => array( 'custom_logo' ),
+			'selector'            => '.custom-logo-link',
+			'render_callback'     => array( $this, '_render_custom_logo_partial' ),
 			'container_inclusive' => true,
 		) );
 
@@ -2231,65 +2322,4 @@ final class WP_Customize_Manager {
 	public function _render_custom_logo_partial() {
 		return get_custom_logo();
 	}
-}
-
-/**
- * Sanitizes a hex color.
- *
- * Returns either '', a 3 or 6 digit hex color (with #), or nothing.
- * For sanitizing values without a #, see sanitize_hex_color_no_hash().
- *
- * @since 3.4.0
- *
- * @param string $color
- * @return string|void
- */
-function sanitize_hex_color( $color ) {
-	if ( '' === $color )
-		return '';
-
-	// 3 or 6 hex digits, or the empty string.
-	if ( preg_match('|^#([A-Fa-f0-9]{3}){1,2}$|', $color ) )
-		return $color;
-}
-
-/**
- * Sanitizes a hex color without a hash. Use sanitize_hex_color() when possible.
- *
- * Saving hex colors without a hash puts the burden of adding the hash on the
- * UI, which makes it difficult to use or upgrade to other color types such as
- * rgba, hsl, rgb, and html color names.
- *
- * Returns either '', a 3 or 6 digit hex color (without a #), or null.
- *
- * @since 3.4.0
- *
- * @param string $color
- * @return string|null
- */
-function sanitize_hex_color_no_hash( $color ) {
-	$color = ltrim( $color, '#' );
-
-	if ( '' === $color )
-		return '';
-
-	return sanitize_hex_color( '#' . $color ) ? $color : null;
-}
-
-/**
- * Ensures that any hex color is properly hashed.
- * Otherwise, returns value untouched.
- *
- * This method should only be necessary if using sanitize_hex_color_no_hash().
- *
- * @since 3.4.0
- *
- * @param string $color
- * @return string
- */
-function maybe_hash_hex_color( $color ) {
-	if ( $unhashed = sanitize_hex_color_no_hash( $color ) )
-		return '#' . $unhashed;
-
-	return $color;
 }

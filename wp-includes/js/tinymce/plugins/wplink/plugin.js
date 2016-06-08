@@ -158,7 +158,7 @@
 				editToolbar = editor.wp._createToolbar( editButtons, true );
 
 				editToolbar.on( 'show', function() {
-					if ( ! tinymce.$( document.body ).hasClass( 'modal-open' ) ) {
+					if ( typeof window.wpLink === 'undefined' || ! window.wpLink.modalOpen ) {
 						window.setTimeout( function() {
 							var element = editToolbar.$el.find( 'input.ui-autocomplete-input' )[0],
 								selection = linkNode && ( linkNode.textContent || linkNode.innerText );
@@ -420,7 +420,7 @@
 						}
 					} ).autocomplete( 'instance' )._renderItem = function( ul, item ) {
 						return $( '<li role="option" id="mce-wp-autocomplete-' + item.ID + '">' )
-						.append( '<span>' + item.title + '</span>&nbsp;<span class="alignright">' + item.info + '</span>' )
+						.append( '<span>' + item.title + '</span>&nbsp;<span class="wp-editor-float-right">' + item.info + '</span>' )
 						.appendTo( ul );
 					};
 
@@ -440,10 +440,26 @@
 							$input.autocomplete( 'search' );
 						}
 					} )
+					// Returns a jQuery object containing the menu element.
 					.autocomplete( 'widget' )
 						.addClass( 'wplink-autocomplete' )
 						.attr( 'role', 'listbox' )
-						.removeAttr( 'tabindex' ); // Remove the `tabindex=0` attribute added by jQuery UI.
+						.removeAttr( 'tabindex' ) // Remove the `tabindex=0` attribute added by jQuery UI.
+						/*
+						 * Looks like Safari and VoiceOver need an `aria-selected` attribute. See ticket #33301.
+						 * The `menufocus` and `menublur` events are the same events used to add and remove
+						 * the `ui-state-focus` CSS class on the menu items. See jQuery UI Menu Widget.
+						 */
+						.on( 'menufocus', function( event, ui ) {
+							ui.item.attr( 'aria-selected', 'true' );
+						})
+						.on( 'menublur', function() {
+							/*
+							 * The `menublur` event returns an object where the item is `null`
+							 * so we need to find the active item with other means.
+							 */
+							$( this ).find( '[aria-selected="true"]' ).removeAttr( 'aria-selected' );
+						});
 				}
 
 				tinymce.$( input ).on( 'keydown', function( event ) {
@@ -459,7 +475,7 @@
 			var linkNode = editor.dom.getParent( event.element, 'a' ),
 				$linkNode, href, edit;
 
-			if ( tinymce.$( document.body ).hasClass( 'modal-open' ) ) {
+			if ( typeof window.wpLink !== 'undefined' && window.wpLink.modalOpen ) {
 				editToolbar.tempHide = true;
 				return;
 			}
@@ -472,7 +488,7 @@
 				edit = $linkNode.attr( 'data-wplink-edit' );
 
 				if ( href === '_wp_link_placeholder' || edit ) {
-					if ( edit && ! inputInstance.getURL() ) {
+					if ( href !== '_wp_link_placeholder' && ! inputInstance.getURL() ) {
 						inputInstance.setURL( href );
 					}
 

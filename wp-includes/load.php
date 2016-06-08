@@ -183,6 +183,21 @@ function wp_maintenance() {
 	// If the $upgrading timestamp is older than 10 minutes, don't die.
 	if ( ( time() - $upgrading ) >= 600 )
 		return;
+	
+	/**
+	 * Bypass the maintenance mode check
+	 *
+	 * This filter should *NOT* be used by plugins. It is designed for non-web
+	 * runtimes. If this filter returns true, maintenance mode will not be  
+	 * active which can cause problems during updates for web site views.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param bool True to bypass maintenance
+	 */
+	if ( apply_filters( 'bypass_maintenance_mode', false ) ){
+		return;	
+	}
 
 	if ( file_exists( WP_CONTENT_DIR . '/maintenance.php' ) ) {
 		require_once( WP_CONTENT_DIR . '/maintenance.php' );
@@ -285,6 +300,22 @@ function timer_stop( $display = 0, $precision = 3 ) {
  * @access private
  */
 function wp_debug_mode() {
+	/**
+	 * Bypass the debug mode check
+	 *
+	 * This filter should *NOT* be used by plugins. It is designed for non-web
+	 * runtimes. Returning true causes the WP_DEBUG and related constants to
+	 * not be checked and the default php values for errors will be used unless
+	 * you take care to update them yourself.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param bool True to bypass debug mode 
+	 */
+	if ( apply_filters( 'bypass_debug_mode', false ) ){
+		return;	
+	}
+
 	if ( WP_DEBUG ) {
 		error_reporting( E_ALL );
 
@@ -302,7 +333,7 @@ function wp_debug_mode() {
 	}
 
 	if ( defined( 'XMLRPC_REQUEST' ) || defined( 'REST_REQUEST' ) || ( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) {
-		ini_set( 'display_errors', 0 );
+		@ini_set( 'display_errors', 0 );
 	}
 }
 
@@ -331,7 +362,7 @@ function wp_set_lang_dir() {
 			 */
 			define( 'WP_LANG_DIR', WP_CONTENT_DIR . '/languages' );
 			if ( !defined( 'LANGDIR' ) ) {
-				// Old static relative path maintained for limited backwards compatibility - won't work in some cases
+				// Old static relative path maintained for limited backward compatibility - won't work in some cases.
 				define( 'LANGDIR', 'wp-content/languages' );
 			}
 		} else {
@@ -344,7 +375,7 @@ function wp_set_lang_dir() {
 			 */
 			define( 'WP_LANG_DIR', ABSPATH . WPINC . '/languages' );
 			if ( !defined( 'LANGDIR' ) ) {
-				// Old relative path maintained for backwards compatibility
+				// Old relative path maintained for backward compatibility.
 				define( 'LANGDIR', WPINC . '/languages' );
 			}
 		}
@@ -477,7 +508,7 @@ function wp_start_object_cache() {
 
 	if ( function_exists( 'wp_cache_add_global_groups' ) ) {
 		wp_cache_add_global_groups( array( 'users', 'userlogins', 'usermeta', 'user_meta', 'useremail', 'userslugs', 'site-transient', 'site-options', 'site-lookup', 'blog-lookup', 'blog-details', 'rss', 'global-posts', 'blog-id-cache', 'networks', 'sites' ) );
-		wp_cache_add_non_persistent_groups( array( 'comment', 'counts', 'plugins' ) );
+		wp_cache_add_non_persistent_groups( array( 'counts', 'plugins' ) );
 	}
 }
 
@@ -657,7 +688,7 @@ function wp_clone( $object ) {
 /**
  * Whether the current request is for an administrative interface page.
  *
- * Does not check if the user is an administrator; {@see current_user_can()}
+ * Does not check if the user is an administrator; current_user_can()
  * for checking roles and capabilities.
  *
  * @since 1.5.1
@@ -680,7 +711,7 @@ function is_admin() {
  *
  * e.g. `/wp-admin/`
  *
- * Does not check if the user is an administrator; {@see current_user_can()}
+ * Does not check if the user is an administrator; current_user_can()
  * for checking roles and capabilities.
  *
  * @since 3.1.0
@@ -703,7 +734,7 @@ function is_blog_admin() {
  *
  * e.g. `/wp-admin/network/`
  *
- * Does not check if the user is an administrator; {@see current_user_can()}
+ * Does not check if the user is an administrator; current_user_can()
  * for checking roles and capabilities.
  *
  * @since 3.1.0
@@ -728,7 +759,7 @@ function is_network_admin() {
  *
  * Does not inform on whether the user is an admin! Use capability
  * checks to tell if the user should be accessing a section or not
- * {@see current_user_can()}.
+ * current_user_can().
  *
  * @since 3.1.0
  *

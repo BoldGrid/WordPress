@@ -83,6 +83,11 @@ function delete_theme($stylesheet, $redirect = '') {
 		}
 	}
 
+	// Remove the theme from allowed themes on the network.
+	if ( is_multisite() ) {
+		WP_Theme::network_disable_theme( $stylesheet );
+	}
+
 	// Force refresh of theme update information.
 	delete_site_transient( 'update_themes' );
 
@@ -213,28 +218,9 @@ function get_theme_update_available( $theme ) {
 function get_theme_feature_list( $api = true ) {
 	// Hard-coded list is used if api not accessible.
 	$features = array(
-			__( 'Colors' ) => array(
-				'black'   => __( 'Black' ),
-				'blue'    => __( 'Blue' ),
-				'brown'   => __( 'Brown' ),
-				'gray'    => __( 'Gray' ),
-				'green'   => __( 'Green' ),
-				'orange'  => __( 'Orange' ),
-				'pink'    => __( 'Pink' ),
-				'purple'  => __( 'Purple' ),
-				'red'     => __( 'Red' ),
-				'silver'  => __( 'Silver' ),
-				'tan'     => __( 'Tan' ),
-				'white'   => __( 'White' ),
-				'yellow'  => __( 'Yellow' ),
-				'dark'    => __( 'Dark' ),
-				'light'   => __( 'Light' ),
-			),
 
 		__( 'Layout' ) => array(
-			'fixed-layout'      => __( 'Fixed Layout' ),
-			'fluid-layout'      => __( 'Fluid Layout' ),
-			'responsive-layout' => __( 'Responsive Layout' ),
+			'grid-layout'   => __( 'Grid Layout' ),
 			'one-column'    => __( 'One Column' ),
 			'two-columns'   => __( 'Two Columns' ),
 			'three-columns' => __( 'Three Columns' ),
@@ -245,7 +231,6 @@ function get_theme_feature_list( $api = true ) {
 
 		__( 'Features' ) => array(
 			'accessibility-ready'   => __( 'Accessibility Ready' ),
-			'blavatar'              => __( 'Blavatar' ),
 			'buddypress'            => __( 'BuddyPress' ),
 			'custom-background'     => __( 'Custom Background' ),
 			'custom-colors'         => __( 'Custom Colors' ),
@@ -255,6 +240,7 @@ function get_theme_feature_list( $api = true ) {
 			'featured-image-header' => __( 'Featured Image Header' ),
 			'featured-images'       => __( 'Featured Images' ),
 			'flexible-header'       => __( 'Flexible Header' ),
+			'footer-widgets'        => __( 'Footer Widgets' ),
 			'front-page-post-form'  => __( 'Front Page Posting' ),
 			'full-width-template'   => __( 'Full Width Template' ),
 			'microformats'          => __( 'Microformats' ),
@@ -267,9 +253,15 @@ function get_theme_feature_list( $api = true ) {
 		),
 
 		__( 'Subject' )  => array(
-			'holiday'       => __( 'Holiday' ),
-			'photoblogging' => __( 'Photoblogging' ),
-			'seasonal'      => __( 'Seasonal' ),
+			'blog'           => __( 'Blog' ),
+			'e-commerce'     => __( 'E-Commerce' ),
+			'education'      => __( 'Education' ),
+			'entertainment'  => __( 'Entertainment' ),
+			'food-and-drink' => __( 'Food & Drink' ),
+			'holiday'        => __( 'Holiday' ),
+			'news'           => __( 'News' ),
+			'photography'    => __( 'Photography' ),
+			'portfolio'      => __( 'Portfolio' ),
 		)
 	);
 
@@ -319,7 +311,7 @@ function get_theme_feature_list( $api = true ) {
  * Retrieves theme installer pages from the WordPress.org Themes API.
  *
  * It is possible for a theme to override the Themes API result with three
- * filters. Assume this is for themes, which can extend on the Theme Info to
+ * Filterss. Assume this is for themes, which can extend on the Theme Info to
  * offer more choices. This is very powerful and must be used with care, when
  * overriding the filters.
  *
@@ -411,7 +403,7 @@ function themes_api( $action, $args = array() ) {
 	}
 
 	/**
-	 * Filter arguments used to query for installer pages from the WordPress.org Themes API.
+	 * Filters arguments used to query for installer pages from the WordPress.org Themes API.
 	 *
 	 * Important: An object MUST be returned to this filter.
 	 *
@@ -424,7 +416,7 @@ function themes_api( $action, $args = array() ) {
 	$args = apply_filters( 'themes_api_args', $args, $action );
 
 	/**
-	 * Filter whether to override the WordPress.org Themes API.
+	 * Filters whether to override the WordPress.org Themes API.
 	 *
 	 * Passing a non-false value will effectively short-circuit the WordPress.org API request.
 	 *
@@ -470,14 +462,14 @@ function themes_api( $action, $args = array() ) {
 	}
 
 	/**
-	 * Filter the returned WordPress.org Themes API response.
+	 * Filters the returned WordPress.org Themes API response.
 	 *
 	 * @since 2.8.0
 	 *
-	 * @param array|object $res    WordPress.org Themes API response.
-	 * @param string       $action Requested action. Likely values are 'theme_information',
-	 *                             'feature_list', or 'query_themes'.
-	 * @param object       $args   Arguments used to query for installer pages from the WordPress.org Themes API.
+	 * @param array|object|WP_Error $res    WordPress.org Themes API response.
+	 * @param string                $action Requested action. Likely values are 'theme_information',
+	 *                                      'feature_list', or 'query_themes'.
+	 * @param object                $args   Arguments used to query for installer pages from the WordPress.org Themes API.
 	 */
 	return apply_filters( 'themes_api_result', $res, $action, $args );
 }
@@ -496,7 +488,7 @@ function wp_prepare_themes_for_js( $themes = null ) {
 	$current_theme = get_stylesheet();
 
 	/**
-	 * Filter theme data before it is prepared for JavaScript.
+	 * Filters theme data before it is prepared for JavaScript.
 	 *
 	 * Passing a non-empty array will result in wp_prepare_themes_for_js() returning
 	 * early with that value instead.
@@ -582,7 +574,7 @@ function wp_prepare_themes_for_js( $themes = null ) {
 	}
 
 	/**
-	 * Filter the themes prepared for JavaScript, for themes.php.
+	 * Filters the themes prepared for JavaScript, for themes.php.
 	 *
 	 * Could be useful for changing the order, which is by name by default.
 	 *
