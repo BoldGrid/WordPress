@@ -5,8 +5,6 @@
  *
  * Allows for some configuration in wp-config.php (see default-constants.php)
  *
- * @internal This file must be parsable by PHP4.
- *
  * @package WordPress
  */
 
@@ -20,7 +18,7 @@ define( 'WPINC', 'wp-includes' );
 // Include files required for initialization.
 require( ABSPATH . WPINC . '/load.php' );
 require( ABSPATH . WPINC . '/default-constants.php' );
-require( ABSPATH . WPINC . '/plugin.php' );
+require_once( ABSPATH . WPINC . '/plugin.php' );
 
 /*
  * These can't be directly globalized in version.php. When updating,
@@ -71,20 +69,24 @@ timer_start();
 wp_debug_mode();
 
 /**
- * Bypass the loading of advanced-cache.php
+ * Filters whether to enable loading of the advanced-cache.php drop-in.
  *
- * This filter should *NOT* be used by plugins. It is designed for non-web
- * runtimes. If true is returned, advance-cache.php will never be loaded.
+ * This filter runs before it can be used by plugins. It is designed for non-web
+ * run-times. If false is returned, advanced-cache.php will never be loaded.
  *
  * @since 4.6.0
  *
- * @param bool True to bypass advanced-cache.php
+ * @param bool $enable_advanced_cache Whether to enable loading advanced-cache.php (if present).
+ *                                    Default true.
  */
-if ( WP_CACHE && ! apply_filters( 'bypass_advanced_cache', false )  ) {
-// For an advanced caching plugin to use. Uses a static drop-in because you would only want one.
-	_backup_plugin_globals();
+if ( WP_CACHE && apply_filters( 'enable_loading_advanced_cache_dropin', true ) ) {
+	// For an advanced caching plugin to use. Uses a static drop-in because you would only want one.
 	WP_DEBUG ? include( WP_CONTENT_DIR . '/advanced-cache.php' ) : @include( WP_CONTENT_DIR . '/advanced-cache.php' );
-	_restore_plugin_globals();
+
+	// Re-initialize any hooks added manually by advanced-cache.php
+	if ( $wp_filter ) {
+		$wp_filter = WP_Hook::build_preinitialized_hooks( $wp_filter );
+	}
 }
 
 // Define WP_LANG_DIR if not set.
@@ -92,12 +94,16 @@ wp_set_lang_dir();
 
 // Load early WordPress files.
 require( ABSPATH . WPINC . '/compat.php' );
+require( ABSPATH . WPINC . '/class-wp-list-util.php' );
 require( ABSPATH . WPINC . '/functions.php' );
+require( ABSPATH . WPINC . '/class-wp-matchesmapregex.php' );
 require( ABSPATH . WPINC . '/class-wp.php' );
 require( ABSPATH . WPINC . '/class-wp-error.php' );
 require( ABSPATH . WPINC . '/pomo/mo.php' );
+require( ABSPATH . WPINC . '/class-phpass.php' );
 
 // Include the wpdb class and, if present, a db.php database drop-in.
+global $wpdb;
 require_wp_db();
 
 // Set the database table prefix and the format specifiers for database table columns.
@@ -113,6 +119,7 @@ require( ABSPATH . WPINC . '/default-filters.php' );
 // Initialize multisite if enabled.
 if ( is_multisite() ) {
 	require( ABSPATH . WPINC . '/class-wp-site-query.php' );
+	require( ABSPATH . WPINC . '/class-wp-network-query.php' );
 	require( ABSPATH . WPINC . '/ms-blogs.php' );
 	require( ABSPATH . WPINC . '/ms-settings.php' );
 } elseif ( ! defined( 'MULTISITE' ) ) {
@@ -127,6 +134,8 @@ if ( SHORTINIT )
 
 // Load the L10n library.
 require_once( ABSPATH . WPINC . '/l10n.php' );
+require_once( ABSPATH . WPINC . '/class-wp-locale.php' );
+require_once( ABSPATH . WPINC . '/class-wp-locale-switcher.php' );
 
 // Run the installer if WordPress is not installed.
 wp_not_installed();
@@ -139,6 +148,7 @@ require( ABSPATH . WPINC . '/capabilities.php' );
 require( ABSPATH . WPINC . '/class-wp-roles.php' );
 require( ABSPATH . WPINC . '/class-wp-role.php' );
 require( ABSPATH . WPINC . '/class-wp-user.php' );
+require( ABSPATH . WPINC . '/class-wp-query.php' );
 require( ABSPATH . WPINC . '/query.php' );
 require( ABSPATH . WPINC . '/date.php' );
 require( ABSPATH . WPINC . '/theme.php' );
@@ -146,7 +156,8 @@ require( ABSPATH . WPINC . '/class-wp-theme.php' );
 require( ABSPATH . WPINC . '/template.php' );
 require( ABSPATH . WPINC . '/user.php' );
 require( ABSPATH . WPINC . '/class-wp-user-query.php' );
-require( ABSPATH . WPINC . '/session.php' );
+require( ABSPATH . WPINC . '/class-wp-session-tokens.php' );
+require( ABSPATH . WPINC . '/class-wp-user-meta-session-tokens.php' );
 require( ABSPATH . WPINC . '/meta.php' );
 require( ABSPATH . WPINC . '/class-wp-meta-query.php' );
 require( ABSPATH . WPINC . '/class-wp-metadata-lazyloader.php' );
@@ -156,6 +167,7 @@ require( ABSPATH . WPINC . '/author-template.php' );
 require( ABSPATH . WPINC . '/post.php' );
 require( ABSPATH . WPINC . '/class-walker-page.php' );
 require( ABSPATH . WPINC . '/class-walker-page-dropdown.php' );
+require( ABSPATH . WPINC . '/class-wp-post-type.php' );
 require( ABSPATH . WPINC . '/class-wp-post.php' );
 require( ABSPATH . WPINC . '/post-template.php' );
 require( ABSPATH . WPINC . '/revision.php' );
@@ -180,6 +192,7 @@ require( ABSPATH . WPINC . '/cron.php' );
 require( ABSPATH . WPINC . '/deprecated.php' );
 require( ABSPATH . WPINC . '/script-loader.php' );
 require( ABSPATH . WPINC . '/taxonomy.php' );
+require( ABSPATH . WPINC . '/class-wp-taxonomy.php' );
 require( ABSPATH . WPINC . '/class-wp-term.php' );
 require( ABSPATH . WPINC . '/class-wp-term-query.php' );
 require( ABSPATH . WPINC . '/class-wp-tax-query.php' );
@@ -188,6 +201,7 @@ require( ABSPATH . WPINC . '/canonical.php' );
 require( ABSPATH . WPINC . '/shortcodes.php' );
 require( ABSPATH . WPINC . '/embed.php' );
 require( ABSPATH . WPINC . '/class-wp-embed.php' );
+require( ABSPATH . WPINC . '/class-oembed.php' );
 require( ABSPATH . WPINC . '/class-wp-oembed-controller.php' );
 require( ABSPATH . WPINC . '/media.php' );
 require( ABSPATH . WPINC . '/http.php' );
@@ -199,6 +213,7 @@ require( ABSPATH . WPINC . '/class-wp-http-cookie.php' );
 require( ABSPATH . WPINC . '/class-wp-http-encoding.php' );
 require( ABSPATH . WPINC . '/class-wp-http-response.php' );
 require( ABSPATH . WPINC . '/class-wp-http-requests-response.php' );
+require( ABSPATH . WPINC . '/class-wp-http-requests-hooks.php' );
 require( ABSPATH . WPINC . '/widgets.php' );
 require( ABSPATH . WPINC . '/class-wp-widget.php' );
 require( ABSPATH . WPINC . '/class-wp-widget-factory.php' );
@@ -209,6 +224,24 @@ require( ABSPATH . WPINC . '/rest-api.php' );
 require( ABSPATH . WPINC . '/rest-api/class-wp-rest-server.php' );
 require( ABSPATH . WPINC . '/rest-api/class-wp-rest-response.php' );
 require( ABSPATH . WPINC . '/rest-api/class-wp-rest-request.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-posts-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-attachments-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-post-types-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-post-statuses-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-revisions-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-taxonomies-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-terms-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-users-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-comments-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/endpoints/class-wp-rest-settings-controller.php' );
+require( ABSPATH . WPINC . '/rest-api/fields/class-wp-rest-meta-fields.php' );
+require( ABSPATH . WPINC . '/rest-api/fields/class-wp-rest-comment-meta-fields.php' );
+require( ABSPATH . WPINC . '/rest-api/fields/class-wp-rest-post-meta-fields.php' );
+require( ABSPATH . WPINC . '/rest-api/fields/class-wp-rest-term-meta-fields.php' );
+require( ABSPATH . WPINC . '/rest-api/fields/class-wp-rest-user-meta-fields.php' );
+
+$GLOBALS['wp_embed'] = new WP_Embed();
 
 // Load multisite-specific files.
 if ( is_multisite() ) {
@@ -367,15 +400,22 @@ if ( ( 0 === validate_file( $locale ) ) && is_readable( $locale_file ) )
 	require( $locale_file );
 unset( $locale_file );
 
-// Pull in locale data after loading text domain.
-require_once( ABSPATH . WPINC . '/locale.php' );
-
 /**
  * WordPress Locale object for loading locale domain date and various strings.
  * @global WP_Locale $wp_locale
  * @since 2.1.0
  */
 $GLOBALS['wp_locale'] = new WP_Locale();
+
+/**
+ *  WordPress Locale Switcher object for switching locales.
+ *
+ * @since 4.7.0
+ *
+ * @global WP_Locale_Switcher $wp_locale_switcher WordPress locale switcher object.
+ */
+$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
+$GLOBALS['wp_locale_switcher']->init();
 
 // Load the functions for the active theme, for both parent and child theme if applicable.
 if ( ! wp_installing() || 'wp-activate.php' === $pagenow ) {
@@ -420,7 +460,7 @@ if ( is_multisite() ) {
 /**
  * This hook is fired once WP, all plugins, and the theme are fully loaded and instantiated.
  *
- * AJAX requests should use wp-admin/admin-ajax.php. admin-ajax.php can handle requests for
+ * Ajax requests should use wp-admin/admin-ajax.php. admin-ajax.php can handle requests for
  * users not logged in.
  *
  * @link https://codex.wordpress.org/AJAX_in_Plugins

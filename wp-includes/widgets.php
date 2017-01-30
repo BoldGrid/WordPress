@@ -281,12 +281,12 @@ function register_sidebar($args = array()) {
  *
  * @global array $wp_registered_sidebars Stores the new sidebar in this array by sidebar ID.
  *
- * @param string $name The ID of the sidebar when it was added.
+ * @param string|int $sidebar_id The ID of the sidebar when it was registered.
  */
-function unregister_sidebar( $name ) {
+function unregister_sidebar( $sidebar_id ) {
 	global $wp_registered_sidebars;
 
-	unset( $wp_registered_sidebars[ $name ] );
+	unset( $wp_registered_sidebars[ $sidebar_id ] );
 }
 
 /**
@@ -1233,7 +1233,7 @@ function wp_widget_rss_output( $rss, $args = array() ) {
 
 	if ( is_wp_error($rss) ) {
 		if ( is_admin() || current_user_can('manage_options') )
-			echo '<p>' . sprintf( __('<strong>RSS Error</strong>: %s'), $rss->get_error_message() ) . '</p>';
+			echo '<p><strong>' . __( 'RSS Error:' ) . '</strong> ' . $rss->get_error_message() . '</p>';
 		return;
 	}
 
@@ -1342,7 +1342,7 @@ function wp_widget_rss_form( $args, $inputs = null ) {
 	$args['show_date']      = isset( $args['show_date'] ) ? (int) $args['show_date'] : (int) $inputs['show_date'];
 
 	if ( ! empty( $args['error'] ) ) {
-		echo '<p class="widget-error"><strong>' . sprintf( __( 'RSS Error: %s' ), $args['error'] ) . '</strong></p>';
+		echo '<p class="widget-error"><strong>' . __( 'RSS Error:' ) . '</strong> ' . $args['error'] . '</p>';
 	}
 
 	$esc_number = esc_attr( $args['number'] );

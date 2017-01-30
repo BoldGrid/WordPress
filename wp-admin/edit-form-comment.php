@@ -89,7 +89,7 @@ if ( 'approved' === wp_get_comment_status( $comment ) && $comment->comment_post_
 
 <div class="misc-pub-section curtime misc-pub-curtime">
 <?php
-/* translators: Publish box date format, see http://php.net/date */
+/* translators: Publish box date format, see https://secure.php.net/date */
 $datef = __( 'M j, Y @ H:i' );
 ?>
 <span id="timestamp"><?php
@@ -162,7 +162,7 @@ endif; ?>
 <?php echo "<a class='submitdelete deletion' href='" . wp_nonce_url("comment.php?action=" . ( !EMPTY_TRASH_DAYS ? 'deletecomment' : 'trashcomment' ) . "&amp;c=$comment->comment_ID&amp;_wp_original_http_referer=" . urlencode(wp_get_referer()), 'delete-comment_' . $comment->comment_ID) . "'>" . ( !EMPTY_TRASH_DAYS ? __('Delete Permanently') : __('Move to Trash') ) . "</a>\n"; ?>
 </div>
 <div id="publishing-action">
-<?php submit_button( __( 'Update' ), 'primary', 'save', false ); ?>
+<?php submit_button( __( 'Update' ), 'primary large', 'save', false ); ?>
 </div>
 <div class="clear"></div>
 </div>
