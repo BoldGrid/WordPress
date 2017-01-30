@@ -212,6 +212,9 @@
 	display: block;
 }
 
+#customize-theme-controls .widget-control-remove {
+	color: #0073aa;
+}
 #customize-theme-controls .widget-control-remove:hover {
 	color: #0096dd;
 }
